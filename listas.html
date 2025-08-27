@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- ID de Versión de la App -->
-    <meta name="app-version" content="2.6.0">
-    <!-- El SHA del commit de esta versión. Debe actualizarse manually en cada subida. -->
+    <meta name="app-version" content="2.8.8">
+    <!-- El SHA del commit de esta versión. Debe actualizarse manualmente en cada subida. -->
     <meta name="app-commit-sha" content="INICIAL">
-    <title>Gestor de Listas de Caminatas v2.6</title>
+    <title>Gestor de Listas de Caminatas v2.8</title>
     <style>
         /* Estilos Generales y Variables de Tema */
         :root {
@@ -39,13 +39,19 @@
         .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
         h1, h2, h3 { margin-bottom: 1rem; color: var(--color-primario); }
 
+        /* Vistas de Página */
+        .view { display: none; }
+        .view.active { display: block; }
+
         /* Utilidades */
         .card { background-color: var(--color-blanco); padding: 25px; margin-bottom: 25px; border: 1px solid var(--color-secundario); border-radius: 12px; box-shadow: var(--sombra); }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
         .form-group { display: flex; flex-direction: column; }
+        .form-group.full-width { grid-column: 1 / -1; }
         label { margin-bottom: 8px; font-weight: 600; }
-        input, select, button { padding: 12px; border-radius: 8px; border: 1px solid var(--color-secundario); background-color: var(--color-fondo); color: var(--color-texto); font-size: 1rem; transition: all 0.3s; }
-        input:focus, select:focus { outline: none; border-color: var(--color-acento); }
+        input, select, button, textarea { padding: 12px; border-radius: 8px; border: 1px solid var(--color-secundario); background-color: var(--color-fondo); color: var(--color-texto); font-size: 1rem; transition: all 0.3s; font-family: inherit; }
+        textarea { resize: vertical; min-height: 100px; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--color-acento); }
         button { cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
         .btn { background-color: var(--color-primario); color: var(--color-blanco); }
         .btn:hover { opacity: 0.9; transform: translateY(-2px); }
@@ -55,44 +61,23 @@
         .btn-outline { background-color: transparent; color: var(--color-primario); border: 2px solid var(--color-primario); }
         .button-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1rem; }
 
-        /* Header y Controles de Tema */
+        /* Header y Controles */
         .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
-        #change-theme-btn { 
-            width: 50px; 
-            height: 50px; 
-            border-radius: 50%; 
-            border: 2px solid var(--color-secundario); 
-            background-color: var(--color-blanco); 
-            padding: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .header-controls { display: flex; gap: 10px; align-items: center; }
+        .icon-btn { 
+            width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--color-secundario); 
+            background-color: var(--color-blanco); padding: 10px; display: flex;
+            justify-content: center; align-items: center;
         }
-        #change-theme-btn svg {
-            width: 100%;
-            height: 100%;
-            fill: var(--color-texto);
-        }
+        .icon-btn svg { width: 100%; height: 100%; fill: var(--color-texto); }
 
         /* Botón Flotante de WhatsApp */
         #whatsapp-export-btn {
-            position: fixed;
-            bottom: 75px;
-            right: 25px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: #25D366; /* Color de WhatsApp */
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 2rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 100;
-            border: none;
-            padding: 0;
-            transition: transform 0.2s ease-out;
+            position: fixed; bottom: 75px; right: 25px; width: 60px; height: 60px;
+            border-radius: 50%; background-color: #25D366; color: white;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 100; border: none; padding: 0; transition: transform 0.2s ease-out;
         }
         #whatsapp-export-btn:hover { transform: scale(1.1); }
 
@@ -122,7 +107,7 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        /* Modal de Confirmación */
+        /* Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
         .modal-overlay.visible { opacity: 1; visibility: visible; }
         .modal-content { background-color: var(--color-blanco); padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; text-align: center; transform: scale(0.9); transition: transform 0.3s; }
@@ -130,45 +115,70 @@
         #confirmation-counter { font-size: 1.5rem; font-weight: bold; margin: 1rem 0; color: var(--color-error); }
         
         /* Caminatas Guardadas */
-        #saved-hikes-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+        #saved-hikes-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
         .hike-saved-btn { background-color: var(--color-blanco); border: 1px solid var(--color-secundario); padding: 1rem; border-radius: 12px; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; width: 100%; text-transform: none; }
         .hike-saved-btn:hover { border-color: var(--color-primario); }
+        .hike-saved-btn-content { flex-grow: 1; }
         .hike-saved-btn strong { color: var(--color-primario); font-size: 1.1rem; }
         .hike-saved-btn small { color: var(--color-texto); opacity: 0.8; }
-        .btn-delete-hike { background-color: var(--color-error); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; margin-left: 1rem; }
+        .hike-saved-btn-actions { display: flex; gap: 8px; align-items: center; }
+        .btn-action-icon { background-color: transparent; border: 1px solid var(--color-secundario); color: var(--color-texto); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; padding: 0; font-size: 1rem; }
+        .btn-action-icon:hover { border-color: var(--color-primario); background-color: var(--color-fondo); }
+        .btn-action-icon svg { width: 18px; height: 18px; fill: currentColor; }
+        .btn-delete-hike { background-color: var(--color-error); color: white; border: none; }
+
+    
+        /* Página de Configuración */
+        #settings-view .card { box-shadow: none; border: none; }
+        #backup-countdown {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: var(--color-fondo);
+            border-radius: 8px;
+            border: 1px solid var(--color-secundario);
+        }
     </style>
 </head>
 <body class="theme-light">
 
-    <div class="container">
+    <div class="container" style="visibility: hidden;">
         <!-- Encabezado y controles -->
         <header class="header card">
             <div>
                 <h1>Gestor de Caminatas</h1>
                 <p>Crea y administra tus listas de caminatas de forma sencilla.</p>
             </div>
-            <button id="change-theme-btn" title="Cambiar Tema">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
-            </button>
+            <div class="header-controls">
+                <button id="change-theme-btn" title="Cambiar Tema" class="icon-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2A10,10,0,1,0,22,12,10,10,0,0,0,12,2ZM6,14a2,2,0,1,1,2-2A2,2,0,0,1,6,14Zm4-4a2,2,0,1,1,2-2A2,2,0,0,1,10,10Zm4,4a2,2,0,1,1,2-2A2,2,0,0,1,14,14Zm4-4a2,2,0,1,1,2-2A2,2,0,0,1,18,10Z"/></svg>
+                </button>
+                <button id="settings-btn" title="Configuración" class="icon-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.4,11.4a1,1,0,0,0-1,.1,1,1,0,0,0-.4.8,1,1,0,0,0,.1.7,1,1,0,0,0,.8.4h.6a1,1,0,0,0,0-2Zm-14,0h.6a1,1,0,0,0,1-1,1,1,0,0,0-1-1h-.6a1,1,0,0,0,0,2Zm7-8a1,1,0,0,0,.8-.4,1,1,0,0,0,.1-.7,1,1,0,0,0-.1-.7,1,1,0,0,0-.8-.4V1a1,1,0,0,0-2,0V2a1,1,0,0,0,0,2,1,1,0,0,0,1,1Zm0,14a1,1,0,0,0,1-1v-.6a1,1,0,0,0-1-1,1,1,0,0,0-1,1v.6a1,1,0,0,0,1,1Zm-5.4-2.2a1,1,0,0,0-.7-.1,1,1,0,0,0-.7.1,1,1,0,0,0-.4.8,1,1,0,0,0,.1.7l.4.4a1,1,0,0,0,1.4,0,1,1,0,0,0,0-1.4Zm10.8,0a1,1,0,0,0,0,1.4l.4.4a1,1,0,0,0,.7.1,1,1,0,0,0,.7-.1,1,1,0,0,0,.4-.8,1,1,0,0,0-.1-.7Zm-12.2-9a1,1,0,0,0-1.4,0l-.4.4a1,1,0,0,0,0,1.4,1,1,0,0,0,1.4,0l.4-.4a1,1,0,0,0,0-1.4Zm12.2,0a1,1,0,0,0,0,1.4l.4.4a1,1,0,0,0,1.4,0,1,1,0,0,0,0-1.4Z"/></svg>
+                </button>
+            </div>
         </header>
 
-        <!-- Card para Importación Inicial de Contactos -->
-        <div id="initial-import-card" class="card" style="display: none; border-color: var(--color-primario); text-align: center;">
-            <h2>Bienvenido</h2>
-            <p>Parece que es la primera vez que usas la aplicación o tu base de datos de contactos está vacía.</p>
-            <p>Para comenzar, por favor importa tu archivo <strong>contactos_respaldo.json</strong>.</p>
-            <div class="button-group" style="justify-content: center;">
-                <button id="import-initial-contacts-btn" class="btn">Importar Contactos</button>
-                <input type="file" id="initial-contacts-input" accept=".json" style="display: none;">
+        <!-- Vista de Importación Inicial -->
+        <div id="initial-import-view" class="view">
+            <div class="card" style="border-color: var(--color-primario); text-align: center;">
+                <h2>Bienvenido</h2>
+                <p>Para comenzar, por favor importa tu archivo <strong>contactos_respaldo.json</strong>.</p>
+                <div class="button-group" style="justify-content: center;">
+                    <button id="import-initial-contacts-btn" class="btn">Importar Contactos</button>
+                    <input type="file" id="initial-contacts-input" accept=".json" style="display: none;">
+                </div>
             </div>
         </div>
 
         <!-- Vista de Lista de Caminatas -->
-        <div id="hike-list-view" style="display: none;">
+        <div id="hike-list-view" class="view">
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                     <h2>Caminatas Guardadas</h2>
-                    <button id="go-to-new-hike-btn" class="btn">Nueva Caminata</button>
+                    <div class="button-group">
+                        <button id="go-to-new-hike-btn" class="btn">Nueva Caminata</button>
+                        <button id="go-to-new-instruction-btn" class="btn-outline">Nueva Instrucción</button>
+                    </div>
                 </div>
                 <hr style="border: 1px solid var(--color-secundario); margin: 1rem 0;">
                 <div id="saved-hikes-list"></div>
@@ -176,12 +186,11 @@
         </div>
 
         <!-- Vista de Editor de Caminata -->
-        <div id="hike-editor-view" style="display: none;">
-            <!-- Información de la Caminata -->
+        <div id="hike-editor-view" class="view">
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                     <h2 id="editor-title">Nueva Caminata</h2>
-                    <button id="back-to-list-btn" class="btn-outline">Volver a la Lista</button>
+                    <button class="back-to-list-btn btn-outline">Volver a la Lista</button>
                 </div>
                  <hr style="border: 1px solid var(--color-secundario); margin: 1rem 0;">
                 <form id="hike-form" class="form-grid">
@@ -195,12 +204,23 @@
                         <input type="date" id="hike-date">
                     </div>
                     <div class="form-group">
-                        <label for="hike-date-from">Desde</label>
-                        <input type="date" id="hike-date-from">
+                        <label for="hike-departure-point">Salimos desde</label>
+                        <select id="hike-departure-point">
+                            <option value="">Seleccionar...</option>
+                            <option value="Parque de Tres Ríos-Escuela">Parque de Tres Ríos-Escuela</option>
+                            <option value="Parque de Tres Ríos-Cruz Roja">Parque de Tres Ríos-Cruz Roja</option>
+                            <option value="Parque de Tres Ríos - Letras">Parque de Tres Ríos - Letras</option>
+                            <option value="Plaza de San Diego">Plaza de San Diego</option>
+                            <option value="Iglesia de San Diego">Iglesia de San Diego</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="hike-date-to">Hasta</label>
-                        <input type="date" id="hike-date-to">
+                        <label for="hike-departure-time">Hora de Salida</label>
+                        <input type="time" id="hike-departure-time">
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-start-time">Hora de Inicio Caminata</label>
+                        <input type="time" id="hike-start-time">
                     </div>
                     <div class="form-group">
                         <label for="hike-currency">Moneda</label>
@@ -243,20 +263,21 @@
                             <option value="">N/A</option><option value="3000">¢3,000</option><option value="5000">¢5,000</option><option value="8000">¢8,000</option><option value="10000">¢10,000</option><option value="15000">¢15,000</option><option value="35000">¢35,000</option><option value="50000">¢50,000</option><option value="60000">¢60,000</option><option value="70000">¢70,000</option><option value="80000">¢80,000</option><option value="100000">¢100,000</option>
                         </select>
                     </div>
+                    <div class="form-group full-width">
+                        <label for="hike-pickup-points">Se Recoge En:</label>
+                        <textarea id="hike-pickup-points" placeholder="Escribe cada punto de recogida en una nueva línea..."></textarea>
+                    </div>
                 </form>
                 <div class="button-group">
                     <button id="save-hike-btn" class="btn">Guardar Caminata</button>
                 </div>
             </div>
 
-            <!-- Lista de Interesados y Gestión de Contactos -->
             <div class="card">
                 <div class="tabs">
                     <button class="tab-link active" data-tab="tab-participants">Lista de Interesados</button>
                     <button class="tab-link" data-tab="tab-new-contact">Agregar Nuevo Contacto</button>
                 </div>
-
-                <!-- Pestaña: Lista de Interesados -->
                 <div id="tab-participants" class="tab-content active">
                     <h3>Agregar Caminante</h3>
                     <form id="add-participant-form" class="form-grid" style="grid-template-columns: 1fr auto;">
@@ -271,8 +292,6 @@
                     <h3 style="margin-top: 2rem;">Lista de Participantes</h3>
                     <ul id="participant-list"></ul>
                 </div>
-
-                <!-- Pestaña: Agregar Nuevo Contacto -->
                 <div id="tab-new-contact" class="tab-content">
                     <h3>Formulario de Nuevo Contacto</h3>
                     <form id="new-contact-form" class="form-grid">
@@ -286,22 +305,77 @@
                      <div class="button-group"><button id="save-contact-btn" class="btn">Guardar Contacto</button></div>
                 </div>
             </div>
-            
-            <!-- Gestión de Datos y Actualización -->
+        </div>
+
+        <!-- Vista de Editor de Instrucciones -->
+        <div id="instruction-editor-view" class="view">
             <div class="card">
-                <h2>Gestión de Datos y App</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <h2>Nueva Instrucción</h2>
+                    <button class="back-to-list-btn btn-outline">Volver a la Lista</button>
+                </div>
+                <hr style="border: 1px solid var(--color-secundario); margin: 1rem 0;">
+                <form id="instruction-form">
+                    <div class="form-group full-width">
+                        <label for="instruction-hike-select">Seleccionar Caminata Existente</label>
+                        <select id="instruction-hike-select"></select>
+                    </div>
+
+                    <h3>Equipo Requerido</h3>
+                    <div id="instruction-equipment-grid" class="form-grid"></div>
+
+                    <h3>Textos Adicionales</h3>
+                    <div class="form-group full-width">
+                        <label for="instruction-recommendations">Otras Recomendaciones</label>
+                        <textarea id="instruction-recommendations"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="instruction-rules">Normas Generales</label>
+                        <textarea id="instruction-rules"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="instruction-general-info">Otras Indicaciones Generales</label>
+                        <textarea id="instruction-general-info"></textarea>
+                    </div>
+                </form>
+                <div class="button-group">
+                    <button id="save-instruction-btn" class="btn">Guardar Instrucción</button>
+                    <button id="export-instruction-btn" class="btn-secondary">Exportar a WhatsApp</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista de Configuración -->
+        <div id="settings-view" class="view">
+             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+                <h2>Configuración</h2>
+                <button class="back-to-list-btn btn-outline">Volver a la Lista</button>
+            </div>
+            <div class="settings-content">
+                <h3>Gestión de Datos y App</h3>
                 <p>Respalda, restaura o fusiona datos. Mantén tu aplicación actualizada.</p>
                 <div class="button-group">
-                    <button id="backup-btn" class="btn-secondary">Respaldar a JSON</button>
+                    <button id="backup-hikes-btn" class="btn-secondary">Respaldar Caminatas</button>
+                    <button id="backup-contacts-btn" class="btn-secondary">Respaldar Contactos</button>
+                    <button id="backup-all-btn" class="btn-secondary">Respaldar Todo</button>
                     <button id="restore-btn" class="btn-warning">Restaurar desde JSON</button>
                     <button id="merge-btn" class="btn-outline">Fusionar desde JSON</button>
                     <button id="update-app-btn" class="btn">Verificar Cambios</button>
+                    <button id="analyze-app-btn" class="btn-secondary">Analizar App</button>
+                    <button id="delete-all-data-btn" class="btn-danger">Eliminar Todos los Datos</button>
                     <input type="file" id="restore-input" accept=".json" style="display: none;">
                     <input type="file" id="merge-input" accept=".json" style="display: none;">
                 </div>
                 <p id="app-version-display" style="text-align: right; margin-top: 1rem; font-size: 0.9rem; opacity: 0.7;"></p>
+            
+                <h3>Respaldo Automático</h3>
+                <div id="backup-countdown">
+                    <p>Próximo respaldo automático en:</p>
+                    <strong id="countdown-timer">Calculando...</strong>
+                </div>
             </div>
         </div>
+
     </div>
 
     <!-- Botón Flotante de WhatsApp -->
@@ -323,7 +397,6 @@
             </div>
         </div>
     </div>
-
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -360,6 +433,9 @@
                     if (!dbInstance.objectStoreNames.contains('contacts')) {
                         const contactsStore = dbInstance.createObjectStore('contacts', { keyPath: 'id', autoIncrement: true });
                         contactsStore.createIndex('fullName', 'fullName', { unique: false });
+                    }
+                     if (!dbInstance.objectStoreNames.contains('config')) {
+                        dbInstance.createObjectStore('config', { keyPath: 'key' });
                     }
                 };
             });
@@ -426,6 +502,19 @@
                     if (index > -1) data[index] = item;
                     await this._saveToLocalStorage(storeName, data);
                     return item.id;
+                }
+            },
+             async upsert(storeName, item) { // Add or update
+                const store = await this._getStore(storeName, 'readwrite');
+                if (store) {
+                    return new Promise((resolve, reject) => {
+                        const request = store.put(item);
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = (e) => reject(e.target.error);
+                    });
+                } else {
+                    // Fallback for config store in localStorage
+                    localStorage.setItem(item.key, JSON.stringify(item.value));
                 }
             },
             async delete(storeName, id) {
@@ -525,8 +614,10 @@
                 id: currentHike?.id ? Number(currentHike.id) : undefined,
                 nombre: document.getElementById('hike-name').value.trim().toUpperCase(),
                 fecha: document.getElementById('hike-date').value,
-                fechaDesde: document.getElementById('hike-date-from').value,
-                fechaHasta: document.getElementById('hike-date-to').value,
+                salidaDesde: document.getElementById('hike-departure-point').value,
+                horaSalida: document.getElementById('hike-departure-time').value,
+                horaInicio: document.getElementById('hike-start-time').value,
+                puntosRecogida: document.getElementById('hike-pickup-points').value,
                 moneda: document.getElementById('hike-currency').value,
                 precio: document.getElementById('hike-price').value,
                 tipoCambio: document.getElementById('hike-exchange-rate').value,
@@ -534,7 +625,8 @@
                 capacidad: document.getElementById('hike-capacity').value,
                 dificultad: document.getElementById('hike-difficulty').value,
                 reservaCon: document.getElementById('hike-reservation').value,
-                participants: currentHike?.participants || []
+                participants: currentHike?.participants || [],
+                instructions: currentHike?.instructions || {}
             };
         }
 
@@ -543,8 +635,10 @@
             hikeIdInput.value = hike.id || '';
             document.getElementById('hike-name').value = hike.nombre || '';
             document.getElementById('hike-date').value = hike.fecha || '';
-            document.getElementById('hike-date-from').value = hike.fechaDesde || '';
-            document.getElementById('hike-date-to').value = hike.fechaHasta || '';
+            document.getElementById('hike-departure-point').value = hike.salidaDesde || '';
+            document.getElementById('hike-departure-time').value = hike.horaSalida || '';
+            document.getElementById('hike-start-time').value = hike.horaInicio || '';
+            document.getElementById('hike-pickup-points').value = hike.puntosRecogida || '';
             document.getElementById('hike-currency').value = hike.moneda || '¢';
             document.getElementById('hike-price').value = hike.precio || '';
             document.getElementById('hike-exchange-rate').value = hike.tipoCambio || '';
@@ -557,7 +651,7 @@
         }
 
         function clearHikeForm() {
-            currentHike = { participants: [] };
+            currentHike = { participants: [], instructions: {} };
             hikeForm.reset();
             hikeIdInput.value = '';
             calculateTotal();
@@ -738,7 +832,7 @@
         document.addEventListener("click", (e) => closeAllLists(e.target));
 
         // Modal de Confirmación
-        const modal = document.getElementById('confirmation-modal');
+        const confirmationModal = document.getElementById('confirmation-modal');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
         const confirmationCounter = document.getElementById('confirmation-counter');
@@ -749,8 +843,8 @@
 
         function showConfirmationModal(title, message, callback, options = { mode: 'confirm' }) {
             modalMode = options.mode;
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-message').innerHTML = message;
+            confirmationModal.querySelector('#modal-title').textContent = title;
+            confirmationModal.querySelector('#modal-message').innerHTML = message;
             confirmCallback = callback;
             
             if (modalMode === 'confirm') {
@@ -767,10 +861,10 @@
                 modalConfirmBtn.className = 'btn';
             }
             
-            modal.classList.add('visible');
+            confirmationModal.classList.add('visible');
         }
 
-        function hideConfirmationModal() { modal.classList.remove('visible'); confirmCallback = null; }
+        function hideConfirmationModal() { confirmationModal.classList.remove('visible'); confirmCallback = null; }
         function updateConfirmationCounter() { confirmationCounter.textContent = `Confirmaciones restantes: ${confirmationNeeded - currentConfirmationCount}`; }
         
         modalConfirmBtn.addEventListener('click', () => {
@@ -788,23 +882,29 @@
         });
 
         modalCancelBtn.addEventListener('click', hideConfirmationModal);
-        modal.addEventListener('click', (e) => { if (e.target === modal) hideConfirmationModal(); });
-
+        confirmationModal.addEventListener('click', (e) => { if (e.target === confirmationModal) hideConfirmationModal(); });
+        
         // Respaldo, Restauración y Fusión
-        document.getElementById('backup-btn').addEventListener('click', async () => {
-            const hikes = await storage.getAll('hikes');
-            const contacts = await storage.getAll('contacts');
+        async function backupData(type = 'all') {
+            const hikes = (type === 'all' || type === 'hikes') ? await storage.getAll('hikes') : [];
+            const contacts = (type === 'all' || type === 'contacts') ? await storage.getAll('contacts') : [];
             const backupData = { hikes, contacts, backupDate: new Date().toISOString() };
+            
             const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `caminatas_respaldo_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `caminatas_respaldo_${type}_${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        });
+            return backupData;
+        }
+
+        document.getElementById('backup-hikes-btn').addEventListener('click', () => backupData('hikes'));
+        document.getElementById('backup-contacts-btn').addEventListener('click', () => backupData('contacts'));
+        document.getElementById('backup-all-btn').addEventListener('click', () => backupData('all'));
 
         const restoreInput = document.getElementById('restore-input');
         document.getElementById('restore-btn').addEventListener('click', () => restoreInput.click());
@@ -827,42 +927,52 @@
             reader.onload = (e) => {
                 try {
                     const data = JSON.parse(e.target.result);
-                    if (data.hikes && data.contacts) {
-                        const title = mode === 'restore' ? 'Restaurar Respaldo' : 'Fusionar Respaldo';
-                        const message = mode === 'restore' 
-                            ? 'Esto borrará TODOS los datos actuales y los reemplazará con los del archivo. ¿Deseas continuar?'
-                            : 'Esto agregará nuevos datos y actualizará los existentes sin borrar. ¿Deseas continuar?';
+                    const hikesToProcess = data.hikes || [];
+                    let contactsToProcess = [];
+
+                    if (data.contacts && Array.isArray(data.contacts)) {
+                        contactsToProcess = data.contacts;
+                    } else if (Array.isArray(data)) {
+                        contactsToProcess = data;
+                    }
+
+                    if (hikesToProcess.length === 0 && contactsToProcess.length === 0) {
+                        alert('Archivo de respaldo inválido o vacío.');
+                        return;
+                    }
+
+                    const title = mode === 'restore' ? 'Restaurar Respaldo' : 'Fusionar Respaldo';
+                    const message = mode === 'restore' 
+                        ? 'Esto borrará TODOS los datos actuales y los reemplazará con los del archivo. ¿Deseas continuar?'
+                        : 'Esto agregará nuevos datos y actualizará los existentes sin borrar. ¿Deseas continuar?';
+                    
+                    showConfirmationModal(title, message, async () => {
+                        if (mode === 'restore') {
+                            await storage.clear('hikes');
+                            await storage.clear('contacts');
+                        }
+
+                        // Process Hikes
+                        for (const hike of hikesToProcess) {
+                             delete hike.id; 
+                             await storage.add('hikes', hike); 
+                        }
+
+                        // Process Contacts
+                        const existingContacts = (mode === 'merge') ? await storage.getAll('contacts') : [];
+                        const existingContactNames = new Set(existingContacts.map(c => c.fullName.toLowerCase()));
                         
-                        showConfirmationModal(title, message, async () => {
-                            if (mode === 'restore') {
-                                await storage.clear('hikes');
-                                await storage.clear('contacts');
-                                for (const hike of data.hikes) { delete hike.id; await storage.add('hikes', hike); }
-                                for (const contact of data.contacts) { delete contact.id; await storage.add('contacts', contact); }
-                            } else { // Merge logic
-                                // Merge Contacts
-                                const existingContacts = await storage.getAll('contacts');
-                                const existingContactNames = new Set(existingContacts.map(c => c.fullName.toLowerCase()));
-                                for (const newContact of data.contacts) {
-                                    if (!existingContactNames.has(newContact.fullName.toLowerCase())) {
-                                        delete newContact.id;
-                                        await storage.add('contacts', newContact);
-                                    }
-                                }
-                                // Merge Hikes
-                                const existingHikes = await storage.getAll('hikes');
-                                const existingHikeNames = new Set(existingHikes.map(h => h.nombre.toUpperCase()));
-                                for (const newHike of data.hikes) {
-                                    if (!existingHikeNames.has(newHike.nombre.toUpperCase())) {
-                                        delete newHike.id;
-                                        await storage.add('hikes', newHike);
-                                    }
-                                }
+                        for (const contact of contactsToProcess) {
+                            contact.fullName = `${contact.nombre} ${contact.apellido1 || ''} ${contact.apellido2 || ''}`.trim().replace(/\s+/g, ' ');
+                            if (mode === 'restore' || !existingContactNames.has(contact.fullName.toLowerCase())) {
+                                delete contact.id;
+                                await storage.add('contacts', contact);
                             }
-                            alert('Operación completada con éxito.');
-                            location.reload();
-                        });
-                    } else { alert('Archivo de respaldo inválido.'); }
+                        }
+                        
+                        alert('Operación completada con éxito.');
+                        location.reload();
+                    });
                 } catch (error) { console.error('Error al parsear el archivo JSON:', error); alert('Error al leer el archivo de respaldo.'); }
             };
             reader.readAsText(file);
@@ -870,6 +980,10 @@
         
         // Exportar a WhatsApp
         document.getElementById('whatsapp-export-btn').addEventListener('click', () => {
+            if (!currentHike) {
+                alert('Primero debes seleccionar o crear una caminata.');
+                return;
+            }
             const hikeToExport = getHikeDataFromForm();
             if (!hikeToExport.nombre) {
                 alert('No hay información de caminata para exportar. Asegúrate de que tenga un nombre.');
@@ -882,8 +996,9 @@
 
             const fields = [
                 { label: 'Fecha', value: hikeToExport.fecha },
-                { label: 'Desde', value: hikeToExport.fechaDesde },
-                { label: 'Hasta', value: hikeToExport.fechaHasta },
+                { label: 'Salida', value: hikeToExport.salidaDesde },
+                { label: 'Hora Salida', value: hikeToExport.horaSalida },
+                { label: 'Inicio Caminata', value: hikeToExport.horaInicio },
                 { label: 'Precio', value: `${hikeToExport.moneda}${hikeToExport.precio}${tipoCambioLabel}`},
                 { label: 'Distancia', value: hikeToExport.distancia, suffix: ' km' },
                 { label: 'Capacidad', value: hikeToExport.capacidad },
@@ -891,14 +1006,23 @@
                 { label: 'Reserva con', value: hikeToExport.reservaCon, prefix: '¢' },
             ];
             fields.forEach(field => {
-                if (field.value && field.value !== '0' && field.value !== 'N/A' && !field.value.startsWith('$null') && !field.value.startsWith('¢null')) {
+                const fieldValue = field.value || '';
+                if (fieldValue && fieldValue !== '0' && fieldValue !== 'N/A' && !fieldValue.startsWith('$null') && !fieldValue.startsWith('¢null')) {
                     if (field.label === 'Precio') {
-                         message += `*${field.label}:* ${field.value}\n`;
+                         message += `*${field.label}:* ${fieldValue}\n`;
                     } else {
-                        message += `*${field.label}:* ${field.prefix || ''}${field.value}${field.suffix || ''}\n`;
+                        message += `*${field.label}:* ${field.prefix || ''}${fieldValue}${field.suffix || ''}\n`;
                     }
                 }
             });
+
+            if (hikeToExport.puntosRecogida) {
+                const puntos = hikeToExport.puntosRecogida.split('\n').filter(p => p.trim() !== '').map((p, i) => `${i + 1}. ${p.trim()}`).join('\n');
+                if (puntos) {
+                    message += `\n*Se Recoge En:*\n${puntos}\n`;
+                }
+            }
+
             if (hikeToExport.participants && hikeToExport.participants.length > 0) {
                 message += '\n*Lista de Interesados:*\n';
                 hikeToExport.participants.forEach((p, index) => {
@@ -907,7 +1031,7 @@
                     if (p.status === 'Reservado') statusEmoji = '🟡 ';
                     if (p.status === 'Cancelado') statusEmoji = '🟢 ';
                     
-                    const abonosText = (p.status === 'Pendiente' || p.status === 'Reservado') && p.abonos ? ` - *${p.abonos}*` : '';
+                    const abonosText = p.status === 'Reservado' && p.abonos ? ` - *${p.abonos}*` : '';
 
                     message += `${index + 1}. ${statusEmoji}${p.name} - ${p.status}${abonosText}\n`;
                 });
@@ -943,20 +1067,26 @@
                     target.value = value;
                 }
             }
+             if (target.id === 'hike-pickup-points') {
+                const start = target.selectionStart;
+                target.value = toTitleCase(target.value);
+                target.setSelectionRange(start, start);
+            }
         });
 
         // NAVEGACIÓN ENTRE VISTAS
-        const hikeListView = document.getElementById('hike-list-view');
-        const hikeEditorView = document.getElementById('hike-editor-view');
-        const editorTitle = document.getElementById('editor-title');
-        function showListView() { hikeListView.style.display = 'block'; hikeEditorView.style.display = 'none'; }
-        function showEditorView(isNew = false) {
-            hikeListView.style.display = 'none';
-            hikeEditorView.style.display = 'block';
-            editorTitle.textContent = isNew ? 'Nueva Caminata' : 'Editar Caminata';
+        const allViews = document.querySelectorAll('.view');
+        function showView(viewId) {
+            allViews.forEach(view => {
+                view.classList.remove('active');
+            });
+            document.getElementById(viewId).classList.add('active');
         }
-        document.getElementById('go-to-new-hike-btn').addEventListener('click', () => { clearHikeForm(); showEditorView(true); });
-        document.getElementById('back-to-list-btn').addEventListener('click', showListView);
+
+        document.getElementById('go-to-new-hike-btn').addEventListener('click', () => { clearHikeForm(); showView('hike-editor-view'); });
+        document.getElementById('go-to-new-instruction-btn').addEventListener('click', () => { setupInstructionEditor(); showView('instruction-editor-view'); });
+        document.querySelectorAll('.back-to-list-btn').forEach(btn => btn.addEventListener('click', () => showView('hike-list-view')));
+        document.getElementById('settings-btn').addEventListener('click', () => showView('settings-view'));
 
         // LÓGICA DE CAMINATAS GUARDADAS
         const savedHikesList = document.getElementById('saved-hikes-list');
@@ -969,25 +1099,47 @@
                 hikes.forEach(hike => {
                     const btnContainer = document.createElement('div');
                     btnContainer.className = 'hike-saved-btn';
+
+                    let actionsHTML = '';
+                    // Check if instructions exist and are not empty
+                    if (hike.instructions && Object.keys(hike.instructions).length > 0 && Object.values(hike.instructions).some(v => v)) {
+                        actionsHTML += `<button class="btn-action-icon btn-edit-instructions" title="Editar Instrucciones" data-id="${hike.id}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.71,7.04C21.1,6.65,21.1,6,20.71,5.63L18.37,3.29C18,2.9,17.35,2.9,16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z" /></svg></button>`;
+                    }
+                    actionsHTML += `<button class="btn-action-icon btn-delete-hike" title="Borrar Caminata" data-id="${hike.id}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2,0,0,0,8,21H16A2,2,0,0,0,18,19V7H6V19Z" /></svg></button>`;
+
                     btnContainer.innerHTML = `
-                        <div>
+                        <div class="hike-saved-btn-content">
                             <strong>${hike.nombre}</strong><br>
                             <small>${hike.fecha || 'Sin fecha'}</small>
                         </div>
-                        <button class="btn-delete-hike" data-id="${hike.id}">X</button>
+                        <div class="hike-saved-btn-actions">
+                            ${actionsHTML}
+                        </div>
                     `;
+
                     btnContainer.addEventListener('click', async (e) => {
-                        if (e.target.classList.contains('btn-delete-hike')) {
-                            e.stopPropagation();
-                            const hikeId = Number(e.target.dataset.id);
+                        const target = e.target.closest('button');
+                        if (!target) { // Clicked on the main body of the button
+                            const fullHike = await storage.get('hikes', hike.id);
+                            loadHikeData(fullHike);
+                            showView('hike-editor-view');
+                            return;
+                        }
+
+                        e.stopPropagation();
+                        const hikeId = Number(target.dataset.id);
+
+                        if (target.classList.contains('btn-delete-hike')) {
                             showConfirmationModal('Borrar Caminata', '¿Estás seguro de que quieres borrar esta caminata?', async () => {
                                 await storage.delete('hikes', hikeId);
                                 await loadHikes();
                             });
-                        } else {
-                            const fullHike = await storage.get('hikes', hike.id);
-                            loadHikeData(fullHike);
-                            showEditorView(false);
+                        } else if (target.classList.contains('btn-edit-instructions')) {
+                            const fullHike = await storage.get('hikes', hikeId);
+                            await setupInstructionEditor();
+                            document.getElementById('instruction-hike-select').value = hikeId;
+                            loadInstructionsForHike(fullHike);
+                            showView('instruction-editor-view');
                         }
                     });
                     savedHikesList.appendChild(btnContainer);
@@ -995,27 +1147,138 @@
             }
         }
         
-        // SISTEMA DE ACTUALIZACIÓN
+        // LÓGICA DE INSTRUCCIONES
+        const instructionHikeSelect = document.getElementById('instruction-hike-select');
+        const instructionEquipmentGrid = document.getElementById('instruction-equipment-grid');
+        let currentInstructionHike = null;
+
+        const equipmentList = [
+            { id: 'hidratacion', label: 'Hidratación' }, { id: 'tennisLigera', label: 'Tennis ligera' },
+            { id: 'tennisRunner', label: 'Tennis runner' }, { id: 'tennisHikingBaja', label: 'Tennis Hiking baja' },
+            { id: 'zapatoMedia', label: 'Zapato Caña media' }, { id: 'zapatoAlta', label: 'Zapato Caña alta' },
+            { id: 'bastones', label: 'Bastones' }, { id: 'foco', label: 'Foco o Head-lamp' },
+            { id: 'snacks', label: 'Snacks' }, { id: 'repelente', label: 'Repelente' },
+            { id: 'poncho', label: 'Poncho' }, { id: 'guantes', label: 'Guantes' },
+            { id: 'bloqueador', label: 'Bloqueador' }, { id: 'ropaCambio', label: 'Ropa de Cambio' }
+        ];
+
+        async function setupInstructionEditor() {
+            instructionEquipmentGrid.innerHTML = '';
+            equipmentList.forEach(item => {
+                const formGroup = document.createElement('div');
+                formGroup.className = 'form-group';
+                formGroup.innerHTML = `
+                    <label for="instr-${item.id}">${item.label}</label>
+                    <select id="instr-${item.id}" data-id="${item.id}">
+                        <option value="Opcional">Opcional</option>
+                        <option value="Si">Si</option>
+                        <option value="No">No</option>
+                    </select>
+                `;
+                instructionEquipmentGrid.appendChild(formGroup);
+            });
+
+            // Set default texts
+            document.getElementById('instruction-recommendations').value = `-Llevar Medicamentos personales (ES SU RESPONSABILIDAD)\n-Avisar a un familiar, compañer@ o conocido que se va a rezagar momentaneamente por la razón que sea. No es nuestra obligación saber donde estarás metid@\n-Desayunaremos al llegar para evitar llevar peso y así dejar las cosas en la buseta\n-Siempre es opcional: pasar a comer a la salida y se decide en el camino Según La Mayoría o se programa previamente\n-Evite arrecostarse a arboles, poner la mochila o prendas en el suelo y en caso de tener que hacerlo revise bien el equipo que no hayan insectos que pueden quedarse pegados y correr el riesgo de ser picados\n-Si hay culebras🐍🐍 así que estar atentos.`;
+            document.getElementById('instruction-rules').value = `-Ser Puntuales por respeto a l@s compañer@s que nos esperan en el camino\n-Nadie se queda atrás, ni se queda solo\n-NO discutir por campos de la buseta... (Ya hemos tenido problemas debido a ello y es demasiado descortés y ensucia la armonía y el ambiente bonito). Respetar el campo de su compañer@ a la venida. Conversar si se necesita hacer un cambio por la razón que sea y queda a criterio de quien puede o desea ceder ese espacio_\n-NO participar en estas caminatas si se siente mal\n-NO participar si tiene otras actividades en la tarde\n-NO criticar al rezagado ni al más rápido\n-NO alterar ni dañar el entorno (arrancar plantas, ensuciar ni extraer animalitos)`;
+            document.getElementById('instruction-general-info').value = `-En Caso de rayería y quedemos a la intemperie, no abracemos árboles y apaguemos todos los dispositivos que emitan señales (celulares, walkie-talkies).\n-Alejese de los dispositivos eléctricos y mantenga la distancia de + de 3 metros unos a otros. No se resguarde debajo de arboles.\n-Tenga cuidado si siente algo similar a estática, es probable que un rayo caiga cerca. No se quede estático en lugares abiertos.\n-Llevar Ropa de cambio y cosas personales no indispensables para caminar se quedan en la buseta\n-Es probable topemos con lluvias para estar preparado con poncho aún el clima es inestable.\n-EN CASO DE DERRUMBE EN EL CAMINO, INUNDACIONES O SITUACIÓN QUE PONGA EN RIESGO LA INTEGRIDAD DE TOD@S SE SUSPENDE LA CAMINATA . NO DEPENDE DE QUIENES COORDINAMOS LAS CAMINATAS. NO ES RESPONSABILIDAD DE NADIE SI DEBEMOS TOMAR OTRA RUTA MÁS LEJANA O SI EL CAMINO ESTÁ BLOQUEADO POR ACCIDENTES, LLUVIAS, O LA RAZÓN QUE SEA.)\n-Si es alérgico a picaduras y/o alimentos Puede llevar una pastilla de cetirizina, fexofenadina Allegra o loratadina (OJO A LAS CONTRA-INDICACIONES MEDICAS) POR SI ES ALÉRGICO ALGUNO DE ESTOS FÁRMACOS ES MEJOR CONSULTAR ANTES DE INGERIR CUALQUIERA DE ESTOS MEDICAMENTOS.\n-CADA UNO CAMINA LIBREMENTE CON NOSOTROS.*`;
+
+            await populateInstructionHikeSelect();
+        }
+
+        async function populateInstructionHikeSelect() {
+            const hikes = await storage.getAll('hikes');
+            instructionHikeSelect.innerHTML = '<option value="">Seleccione una caminata...</option>';
+            hikes.forEach(hike => {
+                const option = document.createElement('option');
+                option.value = hike.id;
+                option.textContent = hike.nombre;
+                instructionHikeSelect.appendChild(option);
+            });
+        }
+
+        instructionHikeSelect.addEventListener('change', async (e) => {
+            const hikeId = Number(e.target.value);
+            if (!hikeId) {
+                currentInstructionHike = null;
+                document.getElementById('instruction-form').reset();
+                setupInstructionEditor(); // Reset to defaults
+                return;
+            }
+            currentInstructionHike = await storage.get('hikes', hikeId);
+            loadInstructionsForHike(currentInstructionHike);
+        });
+
+        function loadInstructionsForHike(hike) {
+            const instructions = hike.instructions || {};
+            equipmentList.forEach(item => {
+                const select = document.getElementById(`instr-${item.id}`);
+                if (select) {
+                    select.value = instructions[item.id] || 'Opcional';
+                }
+            });
+            document.getElementById('instruction-recommendations').value = instructions.recommendations || document.getElementById('instruction-recommendations').value;
+            document.getElementById('instruction-rules').value = instructions.rules || document.getElementById('instruction-rules').value;
+            document.getElementById('instruction-general-info').value = instructions.generalInfo || document.getElementById('instruction-general-info').value;
+        }
+
+        document.getElementById('save-instruction-btn').addEventListener('click', async () => {
+            if (!currentInstructionHike) {
+                alert('Por favor, selecciona una caminata primero.');
+                return;
+            }
+            const instructions = {
+                recommendations: document.getElementById('instruction-recommendations').value,
+                rules: document.getElementById('instruction-rules').value,
+                generalInfo: document.getElementById('instruction-general-info').value,
+            };
+            equipmentList.forEach(item => {
+                instructions[item.id] = document.getElementById(`instr-${item.id}`).value;
+            });
+
+            currentInstructionHike.instructions = instructions;
+            await storage.update('hikes', currentInstructionHike);
+            alert('Instrucciones guardadas con éxito.');
+        });
+        
+        document.getElementById('export-instruction-btn').addEventListener('click', () => {
+            if (!currentInstructionHike) {
+                alert('Por favor, selecciona una caminata para exportar sus instrucciones.');
+                return;
+            }
+            let message = `*Instrucciones para ${currentInstructionHike.nombre}*\n\n`;
+
+            message += "*Equipo:*\n";
+            equipmentList.forEach(item => {
+                const value = document.getElementById(`instr-${item.id}`).value;
+                message += `- ${item.label}: *${value}*\n`;
+            });
+
+            function formatTextSection(title, content) {
+                let formattedText = `\n*${title}:*\n`;
+                formattedText += content.replace(/- /g, '\n- ').replace(/_/g, '');
+                return formattedText;
+            }
+
+            message += formatTextSection("Otras Recomendaciones", document.getElementById('instruction-recommendations').value);
+            message += formatTextSection("Normas Generales", document.getElementById('instruction-rules').value);
+            message += formatTextSection("Otras Indicaciones Generales", document.getElementById('instruction-general-info').value);
+
+            const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        });
+
+
+        // SISTEMA DE ACTUALIZACIÓN Y RESPALDO AUTOMÁTICO
         document.getElementById('app-version-display').textContent = `Versión: ${APP_VERSION}`;
         
         async function checkForUpdates() {
             try {
-                // Usamos la API de GitHub para obtener la info del último commit del archivo
-                // Asumimos que el archivo se llama 'listas.html' en el repositorio
                 const repoUrl = 'https://api.github.com/repos/kerm1977/Miniapps/commits?path=listas.html&page=1&per_page=1';
-                
                 const response = await fetch(repoUrl);
-                if (!response.ok) {
-                    console.error('No se pudo verificar la versión desde GitHub.');
-                    return;
-                }
-                
+                if (!response.ok) { console.error('No se pudo verificar la versión desde GitHub.'); return; }
                 const data = await response.json();
-                if (!data || data.length === 0) {
-                    console.error('No se encontraron commits para el archivo especificado.');
-                    return;
-                }
-
+                if (!data || data.length === 0) { console.error('No se encontraron commits para el archivo.'); return; }
                 const latestCommit = data[0];
                 const remoteCommitSha = latestCommit.sha;
                 const commitMessage = latestCommit.commit.message;
@@ -1029,89 +1292,215 @@
                         </p>
                         <p style="margin-top: 1rem;">Se recomienda hacer un respaldo antes de actualizar.</p>
                     `;
-                    showConfirmationModal(
-                        'Actualización Disponible',
-                        message,
-                        () => {
-                            location.reload(true); // El 'true' fuerza la recarga desde el servidor
-                        },
-                        { mode: 'info' }
-                    );
+                    showConfirmationModal('Actualización Disponible', message, () => { location.reload(true); }, { mode: 'info' });
                     document.getElementById('modal-confirm-btn').textContent = 'Recargar y Actualizar';
                 } else {
                     alert('¡Felicitaciones! Ya tienes la última versión.');
                 }
-
             } catch (error) {
                 console.error('Error al verificar actualizaciones:', error);
-                alert('No se pudo conectar para verificar si hay actualizaciones. Revisa tu conexión a internet.');
+                alert('No se pudo conectar para verificar si hay actualizaciones.');
             }
         }
 
         document.getElementById('update-app-btn').addEventListener('click', () => {
              if (window.location.protocol === 'file:') {
-                const message = `
-                    <p>Esta aplicación se está ejecutando como un archivo local y no puede actualizarse automáticamente.</p>
-                    <p style="margin-top: 1rem;"><strong>Para usar una nueva versión:</strong></p>
-                    <ol style="text-align: left; margin: 1rem auto; max-width: 90%; padding-left: 2rem;">
-                        <li>Visita el repositorio en GitHub.</li>
-                        <li><strong>Descarga</strong> el nuevo archivo <code>.html</code>.</li>
-                        <li><strong>Ábrelo</strong> en tu navegador.</li>
-                    </ol>
-                `;
+                const message = `<p>Esta aplicación se está ejecutando como un archivo local y no puede actualizarse automáticamente.</p>`;
                 showConfirmationModal('Instrucciones de Actualización', message, () => {}, { mode: 'info' });
              } else {
                 checkForUpdates();
              }
         });
 
+        document.getElementById('delete-all-data-btn').addEventListener('click', () => {
+            showConfirmationModal(
+                '¡PELIGRO! Eliminar Todos los Datos',
+                'Esta acción es irreversible y borrará TODAS las caminatas, contactos y configuraciones. ¿Estás absolutamente seguro?',
+                async () => {
+                    await storage.clear('hikes');
+                    await storage.clear('contacts');
+                    await storage.clear('config');
+                    alert('Todos los datos han sido eliminados.');
+                    location.reload();
+                }
+            );
+        });
+
+        document.getElementById('analyze-app-btn').addEventListener('click', async () => {
+            let analysisResult = '';
+            let dbStatus = 'No disponible';
+            let hikeCount = 0;
+            let contactCount = 0;
+
+            try {
+                if (db) {
+                    dbStatus = `Inicializada (${DB_NAME} v${DB_VERSION})`;
+                } else if (localStorage.getItem('hikes')) {
+                    dbStatus = 'Usando LocalStorage (fallback)';
+                } else {
+                    dbStatus = 'No se ha detectado almacenamiento.';
+                }
+
+                const hikes = await storage.getAll('hikes');
+                hikeCount = hikes.length;
+
+                const contacts = await storage.getAll('contacts');
+                contactCount = contacts.length;
+
+                analysisResult = `
+                    <p style="text-align: left; margin-bottom: 0.5rem;"><strong>Estado de la Base de Datos:</strong> ${dbStatus}</p>
+                    <p style="text-align: left; margin-bottom: 0.5rem;"><strong>Caminatas Guardadas:</strong> ${hikeCount}</p>
+                    <p style="text-align: left;"><strong>Contactos (Listas):</strong> ${contactCount}</p>
+                `;
+
+                showConfirmationModal('Análisis de la Aplicación', analysisResult, () => {}, { mode: 'info' });
+
+            } catch (error) {
+                console.error("Error durante el análisis:", error);
+                analysisResult = '<p>Ocurrió un error al analizar la aplicación. Revisa la consola para más detalles.</p>';
+                showConfirmationModal('Error de Análisis', analysisResult, () => {}, { mode: 'info' });
+            }
+        });
+
+        async function handleAutoBackup() {
+            const backupInterval = 3 * 24 * 60 * 60 * 1000; // 3 días en milisegundos
+            const config = await storage.get('config', 'autoBackup') || { key: 'autoBackup', value: 0 };
+            const lastBackupTime = config.value;
+            const now = Date.now();
+
+            if (now - lastBackupTime > backupInterval) {
+                console.log("Realizando respaldo automático...");
+                await backupData('all');
+                await storage.upsert('config', { key: 'autoBackup', value: now });
+                console.log("Respaldo automático completado.");
+            }
+            updateBackupCountdown();
+        }
+
+        function updateBackupCountdown() {
+            const countdownTimer = document.getElementById('countdown-timer');
+            setInterval(async () => {
+                const backupInterval = 3 * 24 * 60 * 60 * 1000;
+                const config = await storage.get('config', 'autoBackup') || { key: 'autoBackup', value: 0 };
+                const lastBackupTime = config.value;
+                const nextBackupTime = lastBackupTime + backupInterval;
+                const remainingTime = nextBackupTime - Date.now();
+
+                if (remainingTime <= 0) {
+                    countdownTimer.textContent = "Listo para respaldar.";
+                    return;
+                }
+
+                const days = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+
+                countdownTimer.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+            }, 1000);
+        }
+
         // LÓGICA DE INICIO DE LA APLICACIÓN
         async function startApp() {
             await loadAllContacts();
             await loadHikes();
-            showListView();
+            showView('hike-list-view');
+        }
+
+        function renderFatalErrorScreen(error) {
+            document.body.innerHTML = `
+                <div class="container">
+                    <div class="card" style="text-align: center; border-color: var(--color-error);">
+                        <h2>Error Crítico</h2>
+                        <p>La aplicación no pudo iniciarse correctamente. Esto puede deberse a datos corruptos.</p>
+                        <p style="margin-top: 1rem;">Por favor, intenta borrar los datos y reiniciar la aplicación.</p>
+                        <div class="button-group" style="justify-content: center;">
+                            <button id="fatal-error-reset-btn" class="btn-danger">Borrar Datos y Reiniciar</button>
+                        </div>
+                        <p style="font-size: 0.8rem; color: #666; margin-top: 1.5rem;">Detalles del error: ${error.message}</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('fatal-error-reset-btn').addEventListener('click', async () => {
+                try {
+                    // Intenta borrar IndexedDB
+                    const req = indexedDB.deleteDatabase(DB_NAME);
+                    req.onsuccess = () => console.log("IndexedDB borrada con éxito.");
+                    req.onerror = () => console.error("Error al borrar IndexedDB.");
+                    
+                    // Borra localStorage
+                    localStorage.clear();
+                    
+                    alert("Datos borrados. La aplicación se reiniciará.");
+                    location.reload();
+                } catch (e) {
+                    alert("No se pudieron borrar los datos automáticamente. Por favor, borra los datos del sitio desde la configuración de tu navegador.");
+                }
+            });
         }
 
         async function main() {
-            loadTheme();
-            await initializeDB();
-            
-            if (window.location.protocol !== 'file:') {
-                // Descomentar para activar la verificación automática al iniciar
-                // await checkForUpdates();
-            }
+            const container = document.querySelector('.container');
+            try {
+                loadTheme();
+                await initializeDB();
+                
+                if (window.location.protocol !== 'file:') {
+                    // await checkForUpdates();
+                }
+                
+                await handleAutoBackup();
 
-            const contactsInDB = await storage.getAll('contacts');
-            if (contactsInDB.length === 0) {
-                const importCard = document.getElementById('initial-import-card');
-                const importBtn = document.getElementById('import-initial-contacts-btn');
-                const importInput = document.getElementById('initial-contacts-input');
-                importCard.style.display = 'block';
-                importBtn.addEventListener('click', () => importInput.click());
-                importInput.addEventListener('change', (event) => {
-                    const file = event.target.files[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = async (e) => {
-                        try {
-                            const data = JSON.parse(e.target.result);
-                            if (data.contacts && Array.isArray(data.contacts)) {
-                                importBtn.textContent = 'Importando...';
-                                importBtn.disabled = true;
-                                for (const contact of data.contacts) {
-                                    contact.fullName = `${contact.nombre} ${contact.apellido1 || ''} ${contact.apellido2 || ''}`.trim().replace(/\s+/g, ' ');
-                                    delete contact.id;
-                                    await storage.add('contacts', contact);
+                const contactsInDB = await storage.getAll('contacts');
+                if (contactsInDB.length === 0) {
+                    showView('initial-import-view');
+                    const importBtn = document.getElementById('import-initial-contacts-btn');
+                    const importInput = document.getElementById('initial-contacts-input');
+                    importBtn.addEventListener('click', () => importInput.click());
+                    importInput.addEventListener('change', (event) => {
+                        const file = event.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = async (e) => {
+                            try {
+                                const data = JSON.parse(e.target.result);
+                                if (data.contacts && Array.isArray(data.contacts)) {
+                                    importBtn.textContent = 'Importando...';
+                                    importBtn.disabled = true;
+                                    for (const contact of data.contacts) {
+                                        contact.fullName = `${contact.nombre} ${contact.apellido1 || ''} ${contact.apellido2 || ''}`.trim().replace(/\s+/g, ' ');
+                                        delete contact.id;
+                                        await storage.add('contacts', contact);
+                                    }
+                                    alert('¡Contactos importados con éxito!');
+                                    await startApp(); 
+                                } else { 
+                                    // Intentar leer el formato antiguo donde los contactos están en la raíz
+                                    if (Array.isArray(data)) {
+                                        importBtn.textContent = 'Importando...';
+                                        importBtn.disabled = true;
+                                        for (const contact of data) {
+                                            contact.fullName = `${contact.nombre} ${contact.apellido1 || ''} ${contact.apellido2 || ''}`.trim().replace(/\s+/g, ' ');
+                                            delete contact.id;
+                                            await storage.add('contacts', contact);
+                                        }
+                                        alert('¡Contactos importados con éxito desde formato antiguo!');
+                                        await startApp();
+                                    } else {
+                                        alert('El archivo JSON no tiene el formato esperado.'); 
+                                    }
                                 }
-                                alert('¡Contactos importados con éxito!');
-                                importCard.style.display = 'none';
-                                await startApp(); 
-                            } else { alert('El archivo JSON no tiene el formato esperado.'); }
-                        } catch (error) { console.error('Error al procesar el archivo JSON:', error); alert('Hubo un error al leer o procesar el archivo de contactos.'); }
-                    };
-                    reader.readAsText(file);
-                });
-            } else { await startApp(); }
+                            } catch (error) { console.error('Error al procesar el archivo JSON:', error); alert('Hubo un error al leer o procesar el archivo de contactos.'); }
+                        };
+                        reader.readAsText(file);
+                    });
+                } else { await startApp(); }
+                container.style.visibility = 'visible';
+            } catch (error) {
+                console.error("Error fatal durante el inicio de la aplicación:", error);
+                renderFatalErrorScreen(error);
+                container.style.visibility = 'visible';
+            }
         }
 
         main();
