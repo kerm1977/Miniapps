@@ -1,0 +1,2028 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor Colibrí (Final)</title>
+    
+    <!-- Font Awesome para los iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Google Fonts para tipografías personalizadas (incluyendo Ronda) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Arial&family=Georgia&family=Ronda&family=Times+New+Roman&display=swap" rel="stylesheet">
+
+    <!-- Librerías para exportación PDF y DOCX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://unpkg.com/docx/build/index.js"></script>
+
+    <!-- CSS Integrado -->
+    <style>
+        /* Estilos Generales */
+        body {
+            background-color: #f0f2f5; /* Fondo gris claro */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column; 
+            min-height: 100vh;
+            box-sizing: border-box;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+
+        /* Contenedor de una instancia del editor */
+        .colibri-container-instance {
+            background-color: #ffffff;
+            border: none;
+            box-shadow: none;
+            border-radius: 0;
+            height: 100vh; 
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative; 
+            overflow: hidden;
+        }
+
+        /* Botón flotante */
+        .colibri-floating-btn {
+            position: absolute; 
+            bottom: 20px;      
+            right: 20px;      
+            z-index: 10;      
+            width: 50px;
+            height: 50px;
+            background-color: #2e86de;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            cursor: pointer; 
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .colibri-floating-btn:hover {
+            background-color: #1e6fbf;
+            transform: scale(1.05);
+        }
+        .colibri-floating-btn i {
+            font-size: 22px;
+            transition: transform 0.3s ease;
+            pointer-events: none;
+        }
+
+        /* Barra de herramientas */
+        .colibri-toolbar {
+            display: flex; 
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 5px;
+            padding: 12px 20px;
+            background: #ffffff;
+            border-bottom: 1px solid #e0e7ee;
+            width: 100%;
+            box-sizing: border-box;
+            flex-shrink: 0; 
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .colibri-toolbar:not(.visible) {
+            display: none; 
+        }
+
+        .colibri-divider {
+            width: 1px;
+            height: 24px;
+            background-color: #e0e7ee;
+            margin: 0 5px;
+        }
+
+        .colibri-btn {
+            background-color: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+            color: #5f6e85;
+        }
+
+        .colibri-btn:disabled {
+            color: #bdc3c7;
+            cursor: not-allowed;
+            background-color: transparent !important;
+        }
+
+        .colibri-btn i {
+            font-size: 17px;
+            line-height: 1;
+        }
+
+        .colibri-btn {
+            width: 36px;
+        }
+
+        .colibri-btn:not(:disabled):hover {
+            background-color: #f0f5fa;
+            color: #2e86de;
+        }
+
+        .colibri-btn.active {
+            background-color: #eaf5ff;
+            color: #1e6fbf;
+        }
+
+        .colibri-color-label {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .colibri-color-label:hover {
+            background-color: #f0f5fa;
+        }
+        .colibri-color-label i {
+            color: #5f6e85;
+            transition: color 0.2s ease;
+        }
+        .colibri-color-label:hover i {
+            color: #2e86de;
+        }
+
+        .colibri-color-picker {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        .colibri-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .colibri-dropdown-toggle {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e7ee;
+            border-radius: 6px;
+            cursor: pointer;
+            height: 36px;
+            padding: 0 15px;
+            color: #34495e;
+            font-size: 14px;
+            font-weight: 500;
+            min-width: 120px;
+            text-align: left;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .colibri-dropdown-toggle::after {
+            content: '\f078';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .colibri-dropdown-toggle:hover {
+            border-color: #b8c6d6;
+            background-color: #fdfdfd;
+        }
+
+        .colibri-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: #fff;
+            border: 1px solid #e0e7ee;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            z-index: 1001;
+            min-width: 180px;
+            padding: 5px 0;
+            margin-top: 5px;
+        }
+        .colibri-dropdown-menu.show {
+            display: block;
+        }
+
+        .colibri-dropdown-item {
+            display: block;
+            padding: 8px 15px;
+            color: #34495e;
+            text-decoration: none;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .colibri-dropdown-item:hover {
+            background-color: #f0f5fa;
+            color: #2e86de;
+        }
+
+        /* Estilos del área del editor */
+        .colibri-editor-area, .colibri-source-area, #preview-modal-body {
+            flex-grow: 1;
+            border: none;
+            font-size: 17px;
+            line-height: 1.7;
+            outline: none;
+            resize: none;
+            color: #2d3436;
+            position: relative;
+            overflow-wrap: break-word;
+            isolation: isolate;
+            text-align: left;
+            
+            width: 100%;
+            max-width: 8.5in; 
+            min-height: 11in;
+            padding: 1in;
+            margin: 20px auto; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+            background-color: #ffffff;
+            box-sizing: border-box;
+        }
+
+        .colibri-editor-wrapper {
+            flex-grow: 1;
+            overflow: auto;
+            background-color: #f0f2f5;
+            text-align: center;
+        }
+        
+        /* Placeholder para el editor */
+        .colibri-editor-area:empty:not(:focus)::before {
+            content: attr(data-placeholder);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5em;
+            color: rgba(0, 0, 0, 0.08);
+            pointer-events: none;
+            z-index: -1;
+            font-weight: 600;
+        }
+        
+        .colibri-editor-area img, #preview-modal-body img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .colibri-source-area {
+            width: calc(100% - 50px);
+            font-family: "SF Mono", "Fira Code", "Courier New", monospace;
+            font-size: 15px;
+            color: #34495e;
+            background-color: #f8f9fa;
+        }
+        
+        .image-wrapper {
+            position: absolute;
+            cursor: move;
+        }
+        .image-wrapper img {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .image-wrapper.selected {
+            outline: 2px solid #2e86de;
+            outline-offset: 2px;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #2e86de;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+        .resize-handle.tl { top: -6px; left: -6px; cursor: nwse-resize; }
+        .resize-handle.tr { top: -6px; right: -6px; cursor: nesw-resize; }
+        .resize-handle.bl { bottom: -6px; left: -6px; cursor: nesw-resize; }
+        .resize-handle.br { bottom: -6px; right: -6px; cursor: nwse-resize; }
+
+        .rotate-handle {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 20px;
+            background-color: #2e86de;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            cursor: alias;
+        }
+        .rotate-handle::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 10px;
+            background-color: #2e86de;
+        }
+        
+        .image-toolbar {
+            position: absolute;
+            top: -45px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #34495e;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            z-index: 20;
+            display: none;
+        }
+        .image-wrapper.selected .image-toolbar {
+            display: flex;
+        }
+        
+        .image-toolbar-btn {
+            background: none;
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .image-toolbar-btn:hover {
+            background-color: #4a627a;
+        }
+        .image-toolbar-btn.active {
+            background-color: #2e86de;
+        }
+        .image-toolbar-btn i {
+            font-size: 16px;
+        }
+
+        .colibri-editor-area h1, h2, h3, h4, #preview-modal-body h1, #preview-modal-body h2, #preview-modal-body h3, #preview-modal-body h4 { margin: 1.4em 0 0.7em 0; font-weight: 700; line-height: 1.3; color: #2c3e50; }
+        .colibri-editor-area h1, #preview-modal-body h1 { font-size: 2.2em; }
+        .colibri-editor-area h2, #preview-modal-body h2 { font-size: 1.8em; }
+        .colibri-editor-area h3, #preview-modal-body h3 { font-size: 1.5em; }
+        .colibri-editor-area h4, #preview-modal-body h4 { font-size: 1.25em; }
+        .colibri-editor-area blockquote, #preview-modal-body blockquote { border-left: 3px solid #a9b8c9; margin: 1.5em 0; padding: 10px 20px; color: #5f6e85; font-style: italic; background-color: #f8f9fa; border-radius: 0 8px 8px 0; }
+        .colibri-editor-area ul, .colibri-editor-area ol, #preview-modal-body ul, #preview-modal-body ol { padding-left: 2em; margin-bottom: 1em; }
+        .colibri-editor-area ul.checklist, #preview-modal-body ul.checklist { list-style-type: none; padding-left: 1em; }
+        
+        .colibri-editor-area ul.checklist li, #preview-modal-body ul.checklist li { 
+            display: flex; 
+            align-items: flex-start; 
+            margin-bottom: 5px; 
+        }
+
+        .colibri-editor-area ul.checklist li p,
+        .colibri-editor-area ul.checklist li div,
+        #preview-modal-body ul.checklist li p,
+        #preview-modal-body ul.checklist li div {
+            margin: 0;
+        }
+
+        .colibri-editor-area ul.checklist li input[type="checkbox"], #preview-modal-body ul.checklist li input[type="checkbox"] { margin-right: 10px; width: 18px; height: 18px; flex-shrink: 0; margin-top: 4px; }
+        .colibri-editor-area ul.checklist li label, #preview-modal-body ul.checklist li label { flex-grow: 1; }
+        .colibri-editor-area ul.checklist li.checked label, #preview-modal-body ul.checklist li.checked label { text-decoration: line-through; color: #8a9ab0; }
+        .colibri-editor-area a, #preview-modal-body a { color: #2e86de; text-decoration: none; border-bottom: 2px solid rgba(46, 134, 222, 0.2); transition: all 0.2s ease; cursor: pointer; }
+        .colibri-editor-area a:hover, #preview-modal-body a:hover { background-color: rgba(46, 134, 222, 0.1); border-bottom-color: #2e86de; }
+        .colibri-editor-area table, #preview-modal-body table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+        .colibri-editor-area th, .colibri-editor-area td, #preview-modal-body th, #preview-modal-body td { border: 1px solid #d1d9e6; padding: 8px 12px; text-align: left; }
+        .colibri-editor-area th, #preview-modal-body th { background-color: #f8f9fa; font-weight: 600; }
+        .colibri-editor-area hr, #preview-modal-body hr { border: 0; margin: 2em 0; }
+        .colibri-editor-area hr.page-break, #preview-modal-body hr.page-break { border-top: 2px dashed #a9b8c9; }
+        .colibri-editor-area hr:not(.page-break), #preview-modal-body hr:not(.page-break) { border-top: 1px solid #d1d9e6; }
+
+        .colibri-statusbar { display: flex; gap: 15px; padding: 8px 25px; background-color: #f8f9fa; border-top: 1px solid #e0e7ee; font-size: 13px; color: #5f6e85; user-select: none; flex-shrink: 0; }
+        .colibri-statusbar .colibri-divider { width: 1px; height: 16px; background-color: #e0e7ee; margin: 0; align-self: center; }
+        
+        .colibri-zoom-control { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+        #zoom-slider { width: 120px; }
+        #zoom-level { font-weight: 600; min-width: 45px; text-align: right;}
+
+        .colibri-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(10, 20, 30, 0.5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 2000; animation: fadeIn 0.3s ease; }
+        .colibri-modal { background-color: #fff; padding: 0; border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); width: 90%; max-width: 450px; animation: slideIn 0.4s cubic-bezier(0.25, 1, 0.5, 1); overflow: hidden; }
+        .colibri-modal-header { position: relative; padding: 20px 25px; border-bottom: 1px solid #e0e7ee; padding-right: 50px; }
+        .colibri-modal-header h3 { margin: 0; font-size: 20px; color: #2c3e50; }
+        .colibri-modal-close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 28px; color: #8a9ab0; cursor: pointer; line-height: 1; padding: 5px; transition: color 0.2s ease; }
+        .colibri-modal-close-btn:hover { color: #2c3e50; }
+        .colibri-modal-body { padding: 25px; }
+        .colibri-modal-body p { margin: 0 0 20px 0; color: #5f6e85; font-size: 16px; }
+        .colibri-modal input[type="text"], .colibri-modal input[type="number"], .colibri-modal input[type="file"] { width: 100%; padding: 12px; border: 1px solid #d1d9e6; border-radius: 6px; font-size: 16px; box-sizing: border-box; margin-bottom: 20px; }
+        .colibri-modal input:focus { outline: none; border-color: #2e86de; box-shadow: 0 0 0 3px rgba(46, 134, 222, 0.15); }
+        .colibri-modal-actions { display: flex; justify-content: flex-end; gap: 10px; background-color: #f8f9fa; padding: 15px 25px; border-top: 1px solid #e0e7ee; }
+        .colibri-modal-btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+        .colibri-modal-btn.primary { background-color: #2e86de; color: #fff; }
+        .colibri-modal-btn.primary:hover { background-color: #1e6fbf; }
+        .colibri-modal-btn { background-color: #e0e7ee; color: #5f6e85; }
+        .colibri-modal-btn:hover { background-color: #d1d9e6; }
+        .colibri-tabs { display: flex; border-bottom: 1px solid #e0e7ee; }
+        .colibri-tab { padding: 12px 20px; cursor: pointer; font-weight: 600; color: #5f6e85; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+        .colibri-tab.active { color: #2e86de; border-bottom-color: #2e86de; }
+        .colibri-tab-content { display: none; }
+        .colibri-tab-content.active { display: block; }
+        .colibri-drop-zone { border: 2px dashed #d1d9e6; border-radius: 8px; padding: 40px; text-align: center; color: #8a9ab0; cursor: pointer; transition: all 0.2s ease; }
+        .colibri-drop-zone.dragover { border-color: #2e86de; background-color: #f0f5fa; color: #2e86de; }
+        .colibri-drop-zone i { font-size: 3em; margin-bottom: 10px; }
+        .colibri-drop-zone input[type="file"] { display: none; }
+
+        /* Estilos para el modal de vista previa */
+        .colibri-modal.preview-modal {
+            max-width: 90vw;
+            width: 100%;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #preview-modal-body {
+            flex-grow: 1;
+            overflow-y: auto;
+            background-color: #f0f2f5;
+            padding: 20px;
+            margin: 0;
+            box-shadow: none;
+        }
+
+        /* Estilos para el modal de archivos */
+        .colibri-modal.files-modal {
+            max-width: 600px;
+        }
+        .colibri-file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .colibri-file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .colibri-file-item:hover {
+            background-color: #f8f9fa;
+        }
+        .colibri-file-item-info {
+            flex-grow: 1;
+        }
+        .colibri-file-item-info h4 {
+            margin: 0;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+        .colibri-file-item-info p {
+            margin: 0;
+            font-size: 12px;
+            color: #8a9ab0;
+        }
+        .colibri-file-item-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .colibri-file-item-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #a9b8c9;
+            font-size: 18px;
+            transition: color 0.2s ease;
+        }
+        .colibri-file-item-actions button:hover {
+            color: #2e86de;
+        }
+        .colibri-file-item-actions button.delete-btn:hover {
+            color: #e74c3c;
+        }
+        #save-file-input, #save-file-btn {
+            margin-bottom: 0;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(-30px) scale(0.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <!-- Contenedor donde se inicializará el editor -->
+    <div id="editor-container"></div>
+
+    <!-- JavaScript Integrado -->
+    <script>
+        /**
+         * Colibri WYSIWYG Editor
+         * @author Gemini
+         * @version 6.6.0 (Fixed save new document, blank start and persistence)
+         */
+        class ColibriEditor {
+            constructor(selector) {
+                this.container = document.querySelector(selector);
+                if (!this.container) {
+                    console.error(`ColibriEditor: No se encontró el elemento con el selector "${selector}".`);
+                    return;
+                }
+                this.sourceMode = false;
+                this.savedSelection = null; 
+                this.lastHighlightColor = '#FFFF00';
+                
+                this.history = [];
+                this.historyIndex = -1;
+                this.historyTimeout = null;
+
+                this.currentDocId = null;
+
+                this.buildEditor();
+                this.setupEventListeners();
+                this.updateStatusBar();
+                this.pushState();
+
+                this.setupIndexedDB();
+            }
+
+            // IndexedDB setup and methods
+            async setupIndexedDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open("ColibriEditorDB", 1);
+                    
+                    request.onerror = (event) => {
+                        console.error("IndexedDB error:", event.target.errorCode);
+                        this.showAlert("Hubo un error al abrir la base de datos local. Las funciones de guardado no estarán disponibles.");
+                        reject(event.target.error);
+                    };
+
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        db.createObjectStore("documents", { keyPath: "id", autoIncrement: true });
+                    };
+
+                    request.onsuccess = (event) => {
+                        this.db = event.target.result;
+                        console.log("IndexedDB inicializado con éxito.");
+                        this.loadDefaultDoc();
+                        resolve(this.db);
+                    };
+                });
+            }
+
+            async saveDocumentIndexedDB(documentData) {
+                const transaction = this.db.transaction(["documents"], "readwrite");
+                const store = transaction.objectStore("documents");
+                
+                if (documentData.id) {
+                    const request = store.put(documentData);
+                    return new Promise((resolve, reject) => {
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                } else {
+                    const request = store.add(documentData);
+                    return new Promise((resolve, reject) => {
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                }
+            }
+
+            async getDocumentsIndexedDB() {
+                const transaction = this.db.transaction(["documents"], "readonly");
+                const store = transaction.objectStore("documents");
+                const request = store.getAll();
+
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async getDocumentIndexedDB(id) {
+                const transaction = this.db.transaction(["documents"], "readonly");
+                const store = transaction.objectStore("documents");
+                const request = store.get(id);
+                
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async deleteDocumentIndexedDB(id) {
+                const transaction = this.db.transaction(["documents"], "readwrite");
+                const store = transaction.objectStore("documents");
+                const request = store.delete(id);
+
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async loadDefaultDoc() {
+                try {
+                    const documents = await this.getDocumentsIndexedDB();
+                    if (documents && documents.length > 0) {
+                        const firstDoc = documents[0];
+                        this.editor.innerHTML = firstDoc.content;
+                        this.currentDocId = firstDoc.id;
+                        this.updateEditorState();
+                        console.log("Cargado el primer documento guardado.");
+                    } else {
+                        console.log("No se encontraron documentos. Iniciando uno nuevo.");
+                        this.editor.innerHTML = '';
+                        this.currentDocId = null; 
+                    }
+                    this.pushState();
+                } catch (error) {
+                    console.error("Error loading default document from IndexedDB:", error);
+                    this.showAlert("Hubo un error al cargar los documentos. Se iniciará un nuevo documento.");
+                    this.editor.innerHTML = '';
+                    this.currentDocId = null;
+                }
+            }
+
+            buildEditor() {
+                this.container.classList.add('colibri-container-instance');
+                
+                this.floatingButton = document.createElement('button');
+                this.floatingButton.className = 'colibri-floating-btn';
+                this.floatingButton.title = 'Mostrar/Ocultar Herramientas';
+                this.floatingButton.innerHTML = '<i class="fas fa-bars"></i>';
+                this.floatingButton.style.display = 'none';
+
+                this.toolbar = document.createElement('div');
+                this.toolbar.className = 'colibri-toolbar visible';
+                this.toolbar.innerHTML = `
+                    <div class="colibri-dropdown" data-command="export">
+                        <button type="button" class="colibri-dropdown-toggle" title="Exportar Documento">Exportar</button>
+                        <div class="colibri-dropdown-menu">
+                            <a class="colibri-dropdown-item" data-value="pdf">Guardar como PDF</a>
+                            <a class="colibri-dropdown-item" data-value="docx">Guardar como DOCX</a>
+                            <a class="colibri-dropdown-item" data-value="jpg">Guardar como JPG</a>
+                            <a class="colibri-dropdown-item" data-value="txt">Guardar como TXT</a>
+                        </div>
+                    </div>
+                    <button class="colibri-btn" data-command="newDocument" title="Nuevo Documento"><i class="fas fa-file-alt"></i></button>
+                    <button class="colibri-btn" data-command="save" title="Guardar Documento"><i class="fas fa-save"></i></button>
+                    <button class="colibri-btn" data-command="showFiles" title="Ver Archivos Guardados"><i class="fas fa-folder-open"></i></button>
+                    <span class="colibri-divider"></span>
+                    <button class="colibri-btn" data-command="undo" title="Deshacer" disabled><i class="fas fa-undo"></i></button>
+                    <button class="colibri-btn" data-command="redo" title="Rehacer" disabled><i class="fas fa-redo"></i></button>
+                    <button class="colibri-btn" data-command="removeFormat" title="Limpiar Formato"><i class="fas fa-eraser"></i></button>
+                    <span class="colibri-divider"></span>
+                    <div class="colibri-dropdown" data-command="formatBlock">
+                        <button type="button" class="colibri-dropdown-toggle" title="Formato de Párrafo">Párrafo</button>
+                        <div class="colibri-dropdown-menu">
+                            <a class="colibri-dropdown-item" data-value="p">Párrafo</a>
+                            <a class="colibri-dropdown-item" data-value="h1" style="font-size: 2em; font-weight: bold;">Título 1</a>
+                            <a class="colibri-dropdown-item" data-value="h2" style="font-size: 1.75em; font-weight: bold;">Título 2</a>
+                            <a class="colibri-dropdown-item" data-value="h3" style="font-size: 1.5em; font-weight: bold;">Título 3</a>
+                            <a class="colibri-dropdown-item" data-value="blockquote">Cita</a>
+                        </div>
+                    </div>
+                    <div class="colibri-dropdown" data-command="fontName">
+                        <button type="button" class="colibri-dropdown-toggle" title="Tipografía">Tipografía</button>
+                        <div class="colibri-dropdown-menu">
+                            <a class="colibri-dropdown-item" data-value="Arial" style="font-family: Arial, sans-serif;">Arial</a>
+                            <a class="colibri-dropdown-item" data-value="Georgia" style="font-family: Georgia, serif;">Georgia</a>
+                            <a class="colibri-dropdown-item" data-value='Ronda' style="font-family: 'Ronda', sans-serif;">Ronda</a>
+                            <a class="colibri-dropdown-item" data-value='Times New Roman' style="font-family: 'Times New Roman', serif;">Times New Roman</a>
+                        </div>
+                    </div>
+                    <div class="colibri-dropdown" data-command="fontSize">
+                        <button type="button" class="colibri-dropdown-toggle" title="Tamaño de Fuente">Normal</button>
+                        <div class="colibri-dropdown-menu">
+                            <a class="colibri-dropdown-item" data-value="1"><font size="1">Muy Pequeña</font></a>
+                            <a class="colibri-dropdown-item" data-value="2"><font size="2">Pequeña</font></a>
+                            <a class="colibri-dropdown-item" data-value="3"><font size="3">Normal</font></a>
+                            <a class="colibri-dropdown-item" data-value="4"><font size="4">Mediana</font></a>
+                            <a class="colibri-dropdown-item" data-value="5"><font size="5">Grande</font></a>
+                            <a class="colibri-dropdown-item" data-value="6"><font size="6">Muy Grande</font></a>
+                            <a class="colibri-dropdown-item" data-value="7"><font size="7">Máxima</font></a>
+                        </div>
+                    </div>
+                    <span class="colibri-divider"></span>
+                    <button class="colibri-btn" data-command="bold" title="Negrita"><i class="fas fa-bold"></i></button>
+                    <button class="colibri-btn" data-command="italic" title="Cursiva"><i class="fas fa-italic"></i></button>
+                    <button class="colibri-btn" data-command="underline" title="Subrayado"><i class="fas fa-underline"></i></button>
+                    <label class="colibri-color-label" title="Color de Fuente"><i class="fas fa-font"></i><input type="color" class="colibri-color-picker" data-command="foreColor"></label>
+                    <label class="colibri-color-label" title="Color de Resaltado"><i class="fas fa-highlighter"></i><input type="color" class="colibri-color-picker" data-command="backColor"></label>
+                    <span class="colibri-divider"></span>
+                    <button class="colibri-btn" data-command="justifyLeft" title="Alinear a la Izquierda"><i class="fas fa-align-left"></i></button>
+                    <button class="colibri-btn" data-command="justifyCenter" title="Centrar"><i class="fas fa-align-center"></i></button>
+                    <button class="colibri-btn" data-command="justifyRight" title="Alinear a la Derecha"><i class="fas fa-align-right"></i></button>
+                    <button class="colibri-btn" data-command="justifyFull" title="Justificar"><i class="fas fa-align-justify"></i></button>
+                    <button class="colibri-btn" data-command="decreaseLineHeight" title="Disminuir Interlineado"><i class="fas fa-arrow-down"></i></button>
+                    <button class="colibri-btn" data-command="increaseLineHeight" title="Aumentar Interlineado"><i class="fas fa-arrow-up"></i></button>
+                    <span class="colibri-divider"></span>
+                    <button class="colibri-btn" data-command="insertUnorderedList" title="Lista con Viñetas"><i class="fas fa-list-ul"></i></button>
+                    <button class="colibri-btn" data-command="insertOrderedList" title="Lista Numerada"><i class="fas fa-list-ol"></i></button>
+                    <button class="colibri-btn" data-command="insertChecklist" title="Lista de Tareas"><i class="fas fa-check-square"></i></button>
+                    <span class="colibri-divider"></span>
+                    <button class="colibri-btn" data-command="createLink" title="Insertar Enlace"><i class="fas fa-link"></i></button>
+                    <button class="colibri-btn" data-command="insertImage" title="Insertar Imagen"><i class="fas fa-image"></i></button>
+                    <button class="colibri-btn" data-command="insertTable" title="Insertar Tabla"><i class="fas fa-table"></i></button>
+                    <button class="colibri-btn" data-command="insertHorizontalRule" title="Insertar Línea"><i class="fas fa-minus"></i></button>
+                    <button class="colibri-btn" data-command="deleteElement" title="Borrar Tabla/Línea" disabled><i class="fas fa-trash"></i></button>
+                    <span class="colibri-divider"></span>
+                    <button class="colibri-btn" data-command="preview" title="Vista Previa"><i class="fas fa-eye"></i></button>
+                    <button class="colibri-btn" data-command="toggleSource" title="Ver Código Fuente"><i class="fas fa-code"></i></button>
+                `;
+
+                this.editorWrapper = document.createElement('div');
+                this.editorWrapper.className = 'colibri-editor-wrapper';
+
+                this.editor = document.createElement('div');
+                this.editor.className = 'colibri-editor-area';
+                this.editor.contentEditable = true;
+                this.editor.dataset.placeholder = "Editor Colibrí";
+
+
+                this.sourceView = document.createElement('textarea');
+                this.sourceView.className = 'colibri-source-area';
+                this.sourceView.style.display = 'none';
+                
+                this.statusBar = document.createElement('div');
+                this.statusBar.className = 'colibri-statusbar';
+                this.statusBar.innerHTML = `
+                    <span>Palabras: <span id="word-count">0</span></span>
+                    <span class="colibri-divider"></span>
+                    <span>Caracteres: <span id="char-count">0</span></span>
+                    <span class="colibri-divider"></span>
+                    <span>Interlineado: <span id="line-height-indicator">1.7</span></span>
+                    <div class="colibri-zoom-control">
+                        <i class="fas fa-search-minus"></i>
+                        <input type="range" id="zoom-slider" min="50" max="200" value="100" step="10">
+                        <i class="fas fa-search-plus"></i>
+                        <span id="zoom-level">100%</span>
+                    </div>
+                `;
+
+                this.modalContainer = document.createElement('div');
+                this.modalContainer.innerHTML = `
+                    <div class="colibri-modal-overlay" id="link-modal-overlay"><div class="colibri-modal"><div class="colibri-modal-header"><h3>Insertar Enlace</h3><button class="colibri-modal-close-btn" onclick="this.closest('.colibri-modal-overlay').style.display='none'">&times;</button></div><div class="colibri-modal-body"><input type="text" id="link-url-input" placeholder="https://ejemplo.com"></div><div class="colibri-modal-actions"><button class="colibri-modal-btn" id="link-cancel-btn">Cancelar</button><button class="colibri-modal-btn primary" id="link-ok-btn">Aceptar</button></div></div></div>
+                    <div class="colibri-modal-overlay" id="image-modal-overlay"><div class="colibri-modal"><div class="colibri-modal-header"><h3>Insertar Imagen</h3><button class="colibri-modal-close-btn" onclick="this.closest('.colibri-modal-overlay').style.display='none'">&times;</button></div><div class="colibri-tabs"><div class="colibri-tab active" data-tab="url">Desde URL</div><div class="colibri-tab" data-tab="upload">Subir Archivo</div></div><div class="colibri-modal-body"><div class="colibri-tab-content active" id="image-tab-url"><p>Ingresa la dirección web de la imagen.</p><input type="text" id="image-url-input" placeholder="https://ejemplo.com/imagen.jpg"></div><div class="colibri-tab-content" id="image-tab-upload"><label class="colibri-drop-zone" id="image-drop-zone"><i class="fas fa-cloud-upload-alt"></i><div>Arrastra una imagen aquí o haz clic para seleccionar</div><input type="file" id="image-file-input" accept="image/*"></label></div></div><div class="colibri-modal-actions"><button class="colibri-modal-btn" id="image-cancel-btn">Cancelar</button><button class="colibri-modal-btn primary" id="image-ok-btn">Insertar</button></div></div></div>
+                    <div class="colibri-modal-overlay" id="table-modal-overlay"><div class="colibri-modal"><div class="colibri-modal-header"><h3>Insertar Tabla</h3><button class="colibri-modal-close-btn" onclick="this.closest('.colibri-modal-overlay').style.display='none'">&times;</button></div><div class="colibri-modal-body"><p>Define el tamaño de la tabla.</p><label>Filas:</label><input type="number" id="table-rows-input" value="3" min="1"><label>Columnas:</label><input type="number" id="table-cols-input" value="3" min="1"></div><div class="colibri-modal-actions"><button class="colibri-modal-btn" id="table-cancel-btn">Cancelar</button><button class="colibri-modal-btn primary" id="table-ok-btn">Aceptar</button></div></div></div>
+                    <div class="colibri-modal-overlay" id="alert-modal-overlay"><div class="colibri-modal"><div class="colibri-modal-header"><h3 id="alert-modal-title">Aviso</h3><button class="colibri-modal-close-btn" onclick="this.closest('.colibri-modal-overlay').style.display='none'">&times;</button></div><div class="colibri-modal-body"><p id="alert-modal-message"></p></div><div class="colibri-modal-actions"><button class="colibri-modal-btn primary" id="alert-ok-btn">Aceptar</button></div></div></div>
+                    <div class="colibri-modal-overlay" id="preview-modal-overlay"><div class="colibri-modal preview-modal"><div class="colibri-modal-header"><h3>Vista Previa del Documento</h3><button class="colibri-modal-close-btn" id="preview-x-close-btn">&times;</button></div><div id="preview-modal-body"></div><div class="colibri-modal-actions"><button class="colibri-modal-btn primary" id="preview-close-btn">Cerrar</button></div></div></div>
+                    
+                    <!-- Save Modal -->
+                    <div class="colibri-modal-overlay" id="save-modal-overlay"><div class="colibri-modal"><div class="colibri-modal-header"><h3>Guardar Documento</h3><button class="colibri-modal-close-btn" onclick="this.closest('.colibri-modal-overlay').style.display='none'">&times;</button></div><div class="colibri-modal-body"><label>Título del Documento:</label><input type="text" id="save-file-input" placeholder="Nombre del documento"></div><div class="colibri-modal-actions"><button class="colibri-modal-btn" id="save-file-cancel-btn">Cancelar</button><button class="colibri-modal-btn primary" id="save-file-btn">Guardar</button></div></div></div>
+
+                    <!-- Files Modal -->
+                    <div class="colibri-modal-overlay" id="files-modal-overlay"><div class="colibri-modal files-modal"><div class="colibri-modal-header"><h3>Mis Archivos</h3><button class="colibri-modal-close-btn" onclick="this.closest('.colibri-modal-overlay').style.display='none'">&times;</button></div><div class="colibri-modal-body"><ul id="files-list" class="colibri-file-list"></ul></div><div class="colibri-modal-actions"><button class="colibri-modal-btn primary" id="files-close-btn">Cerrar</button></div></div></div>
+                `;
+
+                this.container.innerHTML = '';
+                this.container.appendChild(this.toolbar);
+                this.editorWrapper.appendChild(this.editor);
+                this.editorWrapper.appendChild(this.sourceView);
+                this.container.appendChild(this.editorWrapper);
+                this.container.appendChild(this.statusBar);
+                this.container.appendChild(this.floatingButton);
+                document.body.appendChild(this.modalContainer);
+            }
+
+            setupEventListeners() {
+                this.toolbar.addEventListener('click', e => this.handleToolbarClick(e));
+                
+                document.addEventListener('click', e => {
+                    const isClickInsideToolbar = this.toolbar.contains(e.target);
+                    const isClickInsideImageWrapper = e.target.closest('.image-wrapper');
+
+                    if (!isClickInsideToolbar && !isClickInsideImageWrapper) {
+                        this.deselectAllImages();
+                    }
+
+                    if (!isClickInsideToolbar) {
+                         this.closeAllDropdowns();
+                    }
+                });
+
+                const updateAll = () => {
+                    this.updateToolbarState();
+                    this.updateStatusBar();
+                    clearTimeout(this.historyTimeout);
+                    this.historyTimeout = setTimeout(() => this.pushState(), 500);
+                };
+                ['focus', 'input', 'keyup'].forEach(event => this.editor.addEventListener(event, updateAll));
+                this.editor.addEventListener('selectionchange', () => this.updateToolbarState());
+                this.editor.addEventListener('click', e => this.handleEditorClick(e));
+                
+                this.editor.addEventListener('keydown', e => this.handleKeyDown(e));
+                this.editor.addEventListener('change', e => this.handleChecklistToggle(e));
+
+                this.modalContainer.querySelector('#link-ok-btn').addEventListener('click', () => this.applyLink());
+                this.modalContainer.querySelector('#link-cancel-btn').addEventListener('click', () => this.hideModal('link-modal-overlay'));
+                this.modalContainer.querySelector('#alert-ok-btn').addEventListener('click', () => this.hideModal('alert-modal-overlay'));
+                this.modalContainer.querySelector('#image-ok-btn').addEventListener('click', () => this.applyImage());
+                this.modalContainer.querySelector('#image-cancel-btn').addEventListener('click', () => this.hideModal('image-modal-overlay'));
+                this.modalContainer.querySelector('#table-ok-btn').addEventListener('click', () => this.applyTable());
+                this.modalContainer.querySelector('#table-cancel-btn').addEventListener('click', () => this.hideModal('table-modal-overlay'));
+                this.modalContainer.querySelector('#preview-close-btn').addEventListener('click', () => this.hideModal('preview-modal-overlay'));
+                this.modalContainer.querySelector('#preview-x-close-btn').addEventListener('click', () => this.hideModal('preview-modal-overlay'));
+                this.modalContainer.querySelector('#save-file-btn').addEventListener('click', () => this.saveDocument());
+                this.modalContainer.querySelector('#save-file-cancel-btn').addEventListener('click', () => this.hideModal('save-modal-overlay'));
+                this.modalContainer.querySelector('#files-close-btn').addEventListener('click', () => this.showFilesModal());
+                
+                this.statusBar.querySelector('#zoom-slider').addEventListener('input', e => this.handleZoom(e.target.value));
+
+                const imageModal = this.modalContainer.querySelector('#image-modal-overlay');
+                imageModal.querySelectorAll('.colibri-tab').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        imageModal.querySelector('.colibri-tab.active').classList.remove('active');
+                        imageModal.querySelector('.colibri-tab-content.active').classList.remove('active');
+                        tab.classList.add('active');
+                        imageModal.querySelector(`#image-tab-${tab.dataset.tab}`).classList.add('active');
+                    });
+                });
+                const dropZone = imageModal.querySelector('#image-drop-zone');
+                const fileInput = imageModal.querySelector('#image-file-input');
+                dropZone.addEventListener('click', () => fileInput.click());
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false));
+                ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover')));
+                ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover')));
+                dropZone.addEventListener('drop', e => { if (e.dataTransfer.files[0]) this.handleImageUpload(e.dataTransfer.files[0]); });
+                fileInput.addEventListener('change', e => { if (e.target.files[0]) this.handleImageUpload(e.target.files[0]); });
+            }
+            
+            handleZoom(value) {
+                const zoomLevel = value / 100;
+                this.editor.style.zoom = zoomLevel;
+                this.sourceView.style.zoom = zoomLevel;
+                this.statusBar.querySelector('#zoom-level').textContent = `${value}%`;
+            }
+
+            handleEditorClick(e) {
+                const target = e.target;
+                const link = target.closest('a');
+
+                if (link && link.href) {
+                    window.open(link.href, '_blank', 'noopener noreferrer');
+                    e.preventDefault();
+                    return;
+                }
+                
+                const wrapper = target.closest('.image-wrapper');
+
+                if (wrapper) {
+                    this.selectImage(wrapper);
+                } else if (target.tagName === 'IMG' && !target.closest('.image-wrapper')) {
+                    this.selectImage(target);
+                } else {
+                    this.deselectAllImages();
+                }
+            }
+
+            selectImage(element) {
+                let wrapper;
+                
+                if (element.tagName === 'IMG') {
+                    this.deselectAllImages();
+                    wrapper = document.createElement('div');
+                    wrapper.className = 'image-wrapper aspect-locked';
+                    wrapper.contentEditable = false;
+                    
+                    wrapper.style.position = 'absolute';
+                    wrapper.style.left = (element.offsetLeft) + 'px';
+                    wrapper.style.top = (element.offsetTop) + 'px';
+                    wrapper.style.width = element.offsetWidth + 'px';
+                    wrapper.style.height = element.offsetHeight + 'px';
+                    
+                    element.parentNode.replaceChild(wrapper, element);
+                    wrapper.appendChild(element);
+
+                    this.addDragListener(wrapper);
+                } else {
+                    wrapper = element;
+                }
+
+                if (!wrapper.classList.contains('selected')) {
+                    this.deselectAllImages();
+                    wrapper.classList.add('selected');
+                    this.addImageControls(wrapper);
+                }
+            }
+
+            deselectAllImages() {
+                this.editor.querySelectorAll('.image-wrapper.selected').forEach(wrapper => {
+                    wrapper.classList.remove('selected');
+                    wrapper.querySelectorAll('.resize-handle, .rotate-handle, .image-toolbar').forEach(handle => handle.remove());
+                });
+            }
+            
+            addImageControls(wrapper) {
+                ['tl', 'tr', 'bl', 'br'].forEach(pos => {
+                    const handle = document.createElement('div');
+                    handle.className = `resize-handle ${pos}`;
+                    wrapper.appendChild(handle);
+                });
+                
+                const rotateHandle = document.createElement('div');
+                rotateHandle.className = 'rotate-handle';
+                wrapper.appendChild(rotateHandle);
+
+                const toolbar = document.createElement('div');
+                toolbar.className = 'image-toolbar';
+                toolbar.innerHTML = `
+                    <button class="image-toolbar-btn" data-action="toggle-aspect-ratio" title="Mantener Proporciones"><i class="fas fa-lock"></i></button>
+                    <button class="image-toolbar-btn" data-action="align-left" title="Alinear a la Izquierda"><i class="fas fa-align-left"></i></button>
+                    <button class="image-toolbar-btn" data-action="align-center" title="Centrar"><i class="fas fa-align-center"></i></button>
+                    <button class="image-toolbar-btn" data-action="align-right" title="Alinear a la Derecha"><i class="fas fa-align-right"></i></button>
+                    <button class="image-toolbar-btn" data-action="opacity" title="Difuminar"><i class="fas fa-star-half-alt"></i></button>
+                    <button class="image-toolbar-btn" data-action="rotate-right" title="Rotar 90°"><i class="fas fa-rotate-right"></i></button>
+                    <button class="image-toolbar-btn" data-action="send-back" title="Enviar al Fondo"><i class="fas fa-layer-group" style="transform: scaleY(-1);"></i></button>
+                    <button class="image-toolbar-btn" data-action="bring-front" title="Traer al Frente"><i class="fas fa-layer-group"></i></button>
+                `;
+                wrapper.appendChild(toolbar);
+
+                if (wrapper.classList.contains('aspect-locked')) {
+                    toolbar.querySelector('[data-action="toggle-aspect-ratio"]').classList.add('active');
+                }
+
+                this.setupResizeForWrapper(wrapper);
+                this.addRotationListener(rotateHandle, wrapper);
+                this.setupImageToolbar(toolbar, wrapper);
+            }
+
+            addDragListener(wrapper) {
+                wrapper.addEventListener('mousedown', e => {
+                    if (e.target.closest('.resize-handle, .rotate-handle, .image-toolbar')) return;
+                    e.preventDefault();
+                    this.selectImage(wrapper);
+
+                    let startX = e.clientX;
+                    let startY = e.clientY;
+                    let startLeft = wrapper.offsetLeft;
+                    let startTop = wrapper.offsetTop;
+
+                    const doDrag = (moveEvent) => {
+                        moveEvent.preventDefault();
+                        let newLeft = startLeft + moveEvent.clientX - startX;
+                        let newTop = startTop + moveEvent.clientY - startY;
+
+                        newLeft = Math.max(0, Math.min(newLeft, this.editor.scrollWidth - wrapper.offsetWidth));
+                        newTop = Math.max(0, Math.min(newTop, this.editor.scrollHeight - wrapper.offsetHeight));
+
+                        wrapper.style.left = `${newLeft}px`;
+                        wrapper.style.top = `${newTop}px`;
+                    };
+                    const stopDrag = () => {
+                        document.removeEventListener('mousemove', doDrag);
+                        document.removeEventListener('mouseup', stopDrag);
+                        this.pushState();
+                    };
+                    document.addEventListener('mousemove', doDrag);
+                    document.addEventListener('mouseup', stopDrag);
+                });
+            }
+
+            setupResizeForWrapper(wrapper) {
+                wrapper.querySelectorAll('.resize-handle').forEach(handle => {
+                    handle.addEventListener('mousedown', e => {
+                        e.preventDefault(); e.stopPropagation();
+                        const startX = e.clientX;
+                        const startY = e.clientY;
+                        const startWidth = wrapper.offsetWidth;
+                        const startHeight = wrapper.offsetHeight;
+                        const startLeft = wrapper.offsetLeft;
+                        const startTop = wrapper.offsetTop;
+                        const aspectRatio = startWidth / startHeight;
+
+                        const doResize = (moveEvent) => {
+                            const dx = moveEvent.clientX - startX;
+                            const dy = moveEvent.clientY - startY;
+                            const isLocked = wrapper.classList.contains('aspect-locked');
+
+                            let newWidth, newHeight, newLeft = startLeft, newTop = startTop;
+
+                            if (handle.classList.contains('br')) {
+                                newWidth = startWidth + dx;
+                                newHeight = isLocked ? newWidth / aspectRatio : startHeight + dy;
+                            } else if (handle.classList.contains('bl')) {
+                                newWidth = startWidth - dx;
+                                newHeight = isLocked ? newWidth / aspectRatio : startHeight + dy;
+                                newLeft = startLeft + dx;
+                            } else if (handle.classList.contains('tr')) {
+                                newWidth = startWidth + dx;
+                                newHeight = isLocked ? newWidth / aspectRatio : startHeight - dy;
+                                newTop = startTop + dy;
+                            } else if (handle.classList.contains('tl')) {
+                                newWidth = startWidth - dx;
+                                newHeight = isLocked ? newWidth / aspectRatio : startHeight - dy;
+                                newLeft = startLeft + dx;
+                                newTop = startTop + dy;
+                            }
+                            
+                            wrapper.style.width = `${newWidth}px`;
+                            wrapper.style.height = `${newHeight}px`;
+                            wrapper.style.left = `${newLeft}px`;
+                            wrapper.style.top = `${newTop}px`;
+                        };
+                        const stopResize = () => {
+                            document.removeEventListener('mousemove', doResize);
+                            this.pushState();
+                        };
+                        document.addEventListener('mousemove', doResize);
+                        document.addEventListener('mouseup', stopResize, { once: true });
+                    });
+                });
+            }
+
+            addRotationListener(handle, wrapper) {
+                handle.addEventListener('mousedown', e => {
+                    e.preventDefault(); e.stopPropagation();
+                    const rect = wrapper.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+                    
+                    const currentTransform = window.getComputedStyle(wrapper).transform;
+                    let initialAngle = 0;
+                    if (currentTransform !== 'none') {
+                        const matrix = new DOMMatrix(currentTransform);
+                        initialAngle = Math.atan2(matrix.b, matrix.a);
+                    }
+
+                    const doRotate = (moveEvent) => {
+                        const moveAngle = Math.atan2(moveEvent.clientY - centerY, e.clientX - centerX);
+                        const angle = initialAngle + (moveAngle - startAngle);
+                        wrapper.style.transform = `rotate(${angle}rad)`;
+                        
+                        wrapper.querySelectorAll('.resize-handle, .rotate-handle, .image-toolbar').forEach(control => {
+                            if(control.classList.contains('image-toolbar') || control.classList.contains('rotate-handle')) {
+                                control.style.transform = `translateX(-50%) rotate(${-angle}rad)`;
+                            } else {
+                                control.style.transform = `rotate(${-angle}rad)`;
+                            }
+                        });
+                    };
+                    const stopRotate = () => {
+                        document.removeEventListener('mousemove', doRotate);
+                        this.pushState();
+                    };
+                    document.addEventListener('mousemove', doRotate);
+                    document.addEventListener('mouseup', stopRotate, { once: true });
+                });
+            }
+
+            setupImageToolbar(toolbar, wrapper) {
+                toolbar.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const button = e.target.closest('.image-toolbar-btn');
+                    if (!button) return;
+
+                    const action = button.dataset.action;
+                    switch(action) {
+                        case 'toggle-aspect-ratio':
+                            wrapper.classList.toggle('aspect-locked');
+                            button.classList.toggle('active');
+                            break;
+                        case 'align-left': wrapper.style.left = '0px'; break;
+                        case 'align-center': wrapper.style.left = `${(this.editor.offsetWidth - wrapper.offsetWidth) / 2}px`; break;
+                        case 'align-right': wrapper.style.left = `${this.editor.offsetWidth - wrapper.offsetWidth}px`; break;
+                        case 'send-back': wrapper.style.zIndex = '-1'; break;
+                        case 'bring-front': wrapper.style.zIndex = '6'; break;
+                        case 'opacity':
+                            let currentOpacity = parseFloat(wrapper.style.opacity || 1.0);
+                            if (currentOpacity > 0.5) wrapper.style.opacity = 0.5;
+                            else if (currentOpacity > 0.2) wrapper.style.opacity = 0.2;
+                            else wrapper.style.opacity = 1.0;
+                            break;
+                        case 'rotate-right':
+                            const currentTransform = wrapper.style.transform;
+                            let currentAngle = 0;
+                            if (currentTransform.includes('rotate')) {
+                                const match = currentTransform.match(/rotate\((.+)rad\)/);
+                                if (match) currentAngle = parseFloat(match[1]);
+                            }
+                            const newAngle = currentAngle + (Math.PI / 2);
+                            wrapper.style.transform = `rotate(${newAngle}rad)`;
+                            break;
+                    }
+                    this.pushState();
+                });
+            }
+            
+            pushState() {
+                const currentState = this.editor.innerHTML;
+                if (this.history.length > 0 && this.history[this.historyIndex] === currentState) return;
+                this.history = this.history.slice(0, this.historyIndex + 1);
+                this.history.push(currentState);
+                this.historyIndex++;
+                this.updateUndoRedoButtons();
+            }
+
+            undo() {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    this.loadState(this.history[this.historyIndex]);
+                }
+            }
+
+            redo() {
+                if (this.historyIndex < this.history.length - 1) {
+                    this.historyIndex++;
+                    this.loadState(this.history[this.historyIndex]);
+                }
+            }
+
+            loadState(state) {
+                this.editor.innerHTML = state;
+                this.editor.querySelectorAll('.image-wrapper').forEach(wrapper => {
+                    this.addDragListener(wrapper);
+                });
+                this.updateUndoRedoButtons();
+            }
+            
+            updateUndoRedoButtons() {
+                const undoBtn = this.toolbar.querySelector('[data-command="undo"]');
+                const redoBtn = this.toolbar.querySelector('[data-command="redo"]');
+                undoBtn.disabled = this.historyIndex <= 0;
+                redoBtn.disabled = this.historyIndex >= this.history.length - 1;
+            }
+
+            saveSelection() {
+                const selection = window.getSelection();
+                if (selection.getRangeAt && selection.rangeCount) this.savedSelection = selection.getRangeAt(0);
+                else this.savedSelection = null;
+            }
+
+            restoreSelection() {
+                if (this.savedSelection) {
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(this.savedSelection);
+                }
+            }
+
+            handleToolbarClick(e) {
+                e.stopPropagation();
+                
+                const dropdownToggle = e.target.closest('.colibri-dropdown-toggle');
+                const dropdownItem = e.target.closest('.colibri-dropdown-item');
+                const normalButton = e.target.closest('.colibri-btn');
+                const colorPicker = e.target.closest('.colibri-color-picker');
+
+                if (dropdownToggle) {
+                    this.saveSelection(); 
+                    const menu = dropdownToggle.nextElementSibling;
+                    const isVisible = menu.classList.contains('show');
+                    this.closeAllDropdowns();
+                    if (!isVisible) menu.classList.add('show');
+                    return;
+                }
+
+                if (dropdownItem) {
+                    e.preventDefault();
+                    const dropdown = dropdownItem.closest('.colibri-dropdown');
+                    const command = dropdown.dataset.command;
+                    const value = dropdownItem.dataset.value;
+
+                    if (command === 'export') {
+                        this.handleExport(value);
+                    } else {
+                        this.executeCommand(command, value);
+                    }
+                    this.closeAllDropdowns();
+                    return;
+                }
+                
+                if (colorPicker) {
+                    this.saveSelection();
+                    colorPicker.oninput = () => {
+                        this.restoreSelection();
+                        this.executeCommand(colorPicker.dataset.command, colorPicker.value);
+                    };
+                    return;
+                }
+
+                if (normalButton) {
+                    const command = normalButton.dataset.command;
+                    if (command === 'undo') { this.undo(); return; }
+                    if (command === 'redo') { this.redo(); return; }
+
+                    if (command === 'toggleSource') { this.toggleSourceView(); return; }
+                    if (this.sourceMode) { this.showAlert("Sal del modo de vista de código para usar las herramientas de formato."); return; }
+
+                    this.saveSelection();
+                    const customCommands = {
+                        'createLink': () => this.showModal('link-modal-overlay', '#link-url-input'),
+                        'insertImage': () => this.showModal('image-modal-overlay'),
+                        'insertTable': () => this.showModal('table-modal-overlay'),
+                        'preview': () => this.showPreview(),
+                        'insertPageBreak': () => this.executeCommand('insertHTML', '<hr class="page-break">'),
+                        'increaseLineHeight': () => this.changeLineHeight(0.1),
+                        'decreaseLineHeight': () => this.changeLineHeight(-0.1),
+                        'deleteElement': () => this.deleteSelectedElement(),
+                        'insertChecklist': () => this.insertChecklist(),
+                        'save': () => this.showSaveModal(),
+                        'showFiles': () => this.showFilesModal(),
+                        'newDocument': () => this.newDocument(),
+                    };
+
+                    if (customCommands[command]) {
+                        customCommands[command]();
+                    } else {
+                        this.executeCommand(command, normalButton.value || null);
+                    }
+                }
+            }
+            
+            showPreview() {
+                const previewContent = this.getContent();
+                const previewBody = this.modalContainer.querySelector('#preview-modal-body');
+                previewBody.innerHTML = previewContent;
+                this.showModal('preview-modal-overlay');
+            }
+
+            closeAllDropdowns() {
+                this.toolbar.querySelectorAll('.colibri-dropdown-menu').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+            
+            showModal(id, focusSelector = null) {
+                this.modalContainer.querySelector(`#${id}`).style.display = 'flex';
+                if (focusSelector) this.modalContainer.querySelector(focusSelector).focus();
+            }
+            
+            hideModal(id) {
+                this.modalContainer.querySelector(`#${id}`).style.display = 'none';
+            }
+            
+            applyLink() {
+                this.restoreSelection();
+                const url = this.modalContainer.querySelector('#link-url-input').value;
+                if (url) this.executeCommand('createLink', url);
+                this.hideModal('link-modal-overlay');
+                this.modalContainer.querySelector('#link-url-input').value = '';
+            }
+            
+            applyImage() {
+                this.restoreSelection();
+                const activeTab = this.modalContainer.querySelector('.colibri-tab.active').dataset.tab;
+                if (activeTab === 'url') {
+                    const url = this.modalContainer.querySelector('#image-url-input').value;
+                    if (url) this.executeCommand('insertImage', url);
+                } else if (activeTab === 'upload') {
+                    const base64Url = this.modalContainer.querySelector('#image-drop-zone').dataset.base64;
+                    if (base64Url) this.executeCommand('insertImage', base64Url);
+                }
+                this.hideModal('image-modal-overlay');
+                this.modalContainer.querySelector('#image-url-input').value = '';
+                const dropZone = this.modalContainer.querySelector('#image-drop-zone');
+                dropZone.innerHTML = '<i class="fas fa-cloud-upload-alt"></i><div>Arrastra una imagen aquí o haz clic para seleccionar</div>';
+                delete dropZone.dataset.base64;
+            }
+
+            applyTable() {
+                this.restoreSelection();
+                const rows = parseInt(this.modalContainer.querySelector('#table-rows-input').value, 10);
+                const cols = parseInt(this.modalContainer.querySelector('#table-cols-input').value, 10);
+                if (rows > 0 && cols > 0) {
+                    let table = '<table><tbody>';
+                    for (let i = 0; i < rows; i++) {
+                        table += '<tr>';
+                        for (let j = 0; j < cols; j++) {
+                            table += '<td><br></td>';
+                        }
+                        table += '</tr>';
+                    }
+                    table += '</tbody></table>';
+                    this.executeCommand('insertHTML', table);
+                }
+                this.hideModal('table-modal-overlay');
+            }
+            
+            changeLineHeight(amount) {
+                this.restoreSelection();
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+
+                let parentEl = selection.getRangeAt(0).commonAncestorContainer;
+                if (parentEl.nodeType !== 1) parentEl = parentEl.parentNode;
+                
+                while(parentEl && !['P', 'DIV', 'H1', 'H2', 'H3', 'LI'].includes(parentEl.tagName)) {
+                    parentEl = parentEl.parentNode;
+                    if (parentEl === this.editor) break;
+                }
+
+                if (parentEl && parentEl !== this.editor) {
+                    const currentLineHeight = parseFloat(window.getComputedStyle(parentEl).lineHeight) / parseFloat(window.getComputedStyle(parentel).fontSize);
+                    const newLineHeight = (isNaN(currentLineHeight) ? 1.7 : currentLineHeight) + amount;
+                    parentEl.style.lineHeight = newLineHeight.toFixed(1);
+                    this.pushState();
+                }
+                this.editor.focus();
+            }
+            
+            handleImageUpload(file) {
+                if (!file.type.startsWith('image/')) {
+                    this.showAlert('Por favor, selecciona un archivo de imagen válido.');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const dropZone = this.modalContainer.querySelector('#image-drop-zone');
+                    dropZone.dataset.base64 = e.target.result;
+                    dropZone.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 150px;">`;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            showAlert(message) {
+                this.modalContainer.querySelector('#alert-modal-message').textContent = message;
+                this.showModal('alert-modal-overlay');
+            }
+
+            executeCommand(command, value = null) {
+                if (!command) return;
+                this.editor.focus();
+                this.restoreSelection();
+
+                document.execCommand(command, false, value);
+                
+                this.pushState();
+                this.updateToolbarState();
+            }
+
+            sanitizeHTML(htmlString) {
+                const sanitizer = (str) => {
+                    const temp = document.createElement('div');
+                    temp.textContent = str;
+                    return temp.innerHTML;
+                };
+
+                const forbiddenTags = ['script', 'style', 'object', 'applet'];
+                forbiddenTags.forEach(tag => {
+                    const regex = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'gi');
+                    htmlString = htmlString.replace(regex, (match) => sanitizer(match));
+                });
+                return htmlString;
+            }
+
+            toggleSourceView() {
+                this.deselectAllImages();
+                this.sourceMode = !this.sourceMode;
+                const toggleBtn = this.toolbar.querySelector('[data-command="toggleSource"]');
+                toggleBtn.classList.toggle('active', this.sourceMode);
+
+                if (this.sourceMode) {
+                    this.sourceView.value = this.editor.innerHTML;
+                    this.editor.style.display = 'none';
+                    this.sourceView.style.display = 'block';
+                    this.sourceView.focus();
+                } else {
+                    this.editor.innerHTML = this.sanitizeHTML(this.sourceView.value);
+                    this.editor.style.display = 'block';
+                    this.sourceView.style.display = 'none';
+                    this.editor.focus();
+                }
+                this.updateStatusBar();
+            }
+
+            updateToolbarState() {
+                if (this.sourceMode) return;
+                this.toolbar.querySelectorAll('.colibri-btn[data-command]').forEach(btn => {
+                    const command = btn.dataset.command;
+                    if (!['undo', 'redo'].includes(command) && document.queryCommandState(command)) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                const deleteBtn = this.toolbar.querySelector('[data-command="deleteElement"]');
+                const selection = window.getSelection();
+                if (selection && selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    if (range) {
+                        const node = range.commonAncestorContainer;
+                        const element = node.nodeType === 1 ? node : node.parentNode;
+                        deleteBtn.disabled = !element.closest('table, hr');
+                    }
+                } else {
+                    deleteBtn.disabled = true;
+                }
+
+                const blockDropdown = this.toolbar.querySelector('.colibri-dropdown[data-command="formatBlock"]');
+                if (blockDropdown) {
+                    const blockValue = document.queryCommandValue('formatBlock').toLowerCase() || 'p';
+                    const activeItem = blockDropdown.querySelector(`.colibri-dropdown-item[data-value="${blockValue}"]`);
+                    blockDropdown.querySelector('.colibri-dropdown-toggle').textContent = activeItem ? activeItem.textContent.trim() : 'Párrafo';
+                }
+                const fontDropdown = this.toolbar.querySelector('.colibri-dropdown[data-command="fontSize"]');
+                if (fontDropdown) {
+                    const sizeValue = document.queryCommandValue('fontSize') || '3';
+                    const activeItem = fontDropdown.querySelector(`.colibri-dropdown-item[data-value="${sizeValue}"]`);
+                    fontDropdown.querySelector('.colibri-dropdown-toggle').textContent = activeItem ? activeItem.textContent.trim() : 'Normal';
+                }
+                const fontNameDropdown = this.toolbar.querySelector('.colibri-dropdown[data-command="fontName"]');
+                if (fontNameDropdown) {
+                    const nameValue = document.queryCommandValue('fontName').replace(/['"]/g, '');
+                    const activeItem = fontNameDropdown.querySelector(`.colibri-dropdown-item[data-value="${nameValue}"]`);
+                    fontNameDropdown.querySelector('.colibri-dropdown-toggle').textContent = activeItem ? activeItem.textContent.trim() : 'Tipografía';
+                }
+            }
+
+            updateEditorState() {
+                this.editor.innerHTML = this.editor.innerHTML.replace(/<img(.*?)style="(.*?)"(.*?)>/g, (match, p1, p2, p3) => {
+                    const wrapperMatch = match.match(/<div class="image-wrapper[^>]*>(.*?)<\/div>/);
+                    if (wrapperMatch) return match;
+                    
+                    const srcMatch = match.match(/src="([^"]*)"/);
+                    if (!srcMatch) return match;
+                    const src = srcMatch[1];
+                    const widthMatch = p2.match(/width:\s*(\d+)px/);
+                    const heightMatch = p2.match(/height:\s*(\d+)px/);
+                    const leftMatch = p2.match(/left:\s*(\d+)px/);
+                    const topMatch = p2.match(/top:\s*(\d+)px/);
+                    const transformMatch = p2.match(/transform:\s*rotate\((.+?)\)/);
+                    
+                    const styles = [
+                        widthMatch ? `width: ${widthMatch[1]}px;` : '',
+                        heightMatch ? `height: ${heightMatch[1]}px;` : '',
+                        leftMatch ? `left: ${leftMatch[1]}px;` : '',
+                        topMatch ? `top: ${topMatch[1]}px;` : '',
+                        transformMatch ? `transform: rotate(${transformMatch[1]});` : ''
+                    ].filter(Boolean).join(' ');
+
+                    return `<div class="image-wrapper" style="${styles}"><img src="${src}"></div>`;
+                });
+            }
+
+            updateStatusBar() {
+                const text = this.editor.innerText || '';
+                const charCount = text.length;
+                const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+                this.statusBar.querySelector('#char-count').textContent = charCount;
+                this.statusBar.querySelector('#word-count').textContent = wordCount;
+
+                const selection = window.getSelection();
+                let lineHeight = '1.7'; // Default
+                if (selection.rangeCount > 0) {
+                    let parentEl = selection.getRangeAt(0).commonAncestorContainer;
+                    if (parentEl.nodeType !== 1) parentEl = parentEl.parentNode;
+                    if (parentEl && parentEl.closest) {
+                        const blockEl = parentEl.closest('p, div, h1, h2, h3, li');
+                        if(blockEl) {
+                            const style = window.getComputedStyle(blockEl);
+                            const lh = parseFloat(style.lineHeight) / parseFloat(style.fontSize);
+                            if (!isNaN(lh)) {
+                                lineHeight = lh.toFixed(1);
+                            }
+                        }
+                    }
+                }
+                this.statusBar.querySelector('#line-height-indicator').textContent = lineHeight;
+            }
+
+            getContent() {
+                this.deselectAllImages();
+                return this.sourceMode ? this.sourceView.value : this.editor.innerHTML;
+            }
+            
+            handleExport(format) {
+                if (format === 'pdf') {
+                    this.exportAsPDF();
+                } else if (format === 'txt') {
+                    this.exportAsTxt();
+                } else if (format === 'jpg') {
+                    this.exportAsJPG();
+                } else if (format === 'docx') {
+                    this.exportAsDocx();
+                }
+            }
+
+            async exportAsDocx() {
+                this.showAlert('Generando DOCX... por favor espera.');
+                
+                const htmlContent = this.getContent();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+                const elements = doc.body.children;
+                
+                const { Document, Packer, Paragraph, TextRun, HeadingLevel } = docx;
+                const children = [];
+
+                for (const el of elements) {
+                    let paragraph;
+                    if (el.tagName === 'P') {
+                        paragraph = new Paragraph({ children: [new TextRun(el.innerText)] });
+                    } else if (el.tagName === 'H1') {
+                        paragraph = new Paragraph({ children: [new TextRun(el.innerText)], heading: HeadingLevel.HEADING_1 });
+                    } else if (el.tagName === 'H2') {
+                        paragraph = new Paragraph({ children: [new TextRun(el.innerText)], heading: HeadingLevel.HEADING_2 });
+                    } else if (el.tagName === 'H3') {
+                        paragraph = new Paragraph({ children: [new TextRun(el.innerText)], heading: HeadingLevel.HEADING_3 });
+                    } else if (el.tagName === 'H4') {
+                        paragraph = new Paragraph({ children: [new TextRun(el.innerText)], heading: HeadingLevel.HEADING_4 });
+                    } else if (el.tagName === 'BLOCKQUOTE') {
+                         paragraph = new Paragraph({ children: [new TextRun(el.innerText)], indent: { left: 720 } });
+                    } else {
+                        paragraph = new Paragraph({ children: [new TextRun(el.innerText)] });
+                    }
+                    children.push(paragraph);
+                }
+
+                const docxFile = new Document({ sections: [{ children: children }] });
+
+                Packer.toBlob(docxFile).then(blob => {
+                    saveAs(blob, "documento-colibri.docx");
+                    this.hideModal('alert-modal-overlay');
+                }).catch(error => {
+                    console.error("Error al generar DOCX:", error);
+                    this.showAlert('Ocurrió un error al generar el DOCX.');
+                });
+            }
+
+            async exportAsJPG() {
+                this.showAlert('Generando JPG... por favor espera.');
+                const originalZoom = this.editor.style.zoom || '1';
+                this.editor.style.zoom = '1';
+
+                const printableArea = this.editor.cloneNode(true);
+                printableArea.style.width = '210mm';
+                printableArea.style.padding = '15mm';
+                printableArea.style.boxSizing = 'border-box';
+                printableArea.style.position = 'absolute';
+                printableArea.style.left = '-9999px';
+                printableArea.style.top = '0';
+                printableArea.style.height = 'auto';
+                
+                document.body.appendChild(printableArea);
+
+                try {
+                    const canvas = await html2canvas(printableArea, { 
+                        scale: 2,
+                        useCORS: true,
+                        windowWidth: printableArea.scrollWidth,
+                        windowHeight: printableArea.scrollHeight
+                    });
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                    
+                    const a = document.createElement('a');
+                    a.href = imgData;
+                    a.download = 'documento-colibri.jpg';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                } catch (error) {
+                    console.error("Error al generar JPG:", error);
+                    this.showAlert('Ocurrió un error al generar el JPG.');
+                } finally {
+                    document.body.removeChild(printableArea);
+                    this.hideModal('alert-modal-overlay');
+                    this.editor.style.zoom = originalZoom;
+                }
+            }
+
+            async exportAsPDF() {
+                this.showAlert('Generando PDF... por favor espera.');
+                const { jsPDF } = window.jspdf;
+                const originalZoom = this.editor.style.zoom || '1';
+                this.editor.style.zoom = '1';
+
+                const printableArea = this.editor.cloneNode(true);
+                printableArea.style.width = '210mm';
+                printableArea.style.padding = '15mm';
+                printableArea.style.boxSizing = 'border-box';
+                printableArea.style.position = 'absolute';
+                printableArea.style.left = '-9999px';
+                printableArea.style.top = '0';
+                printableArea.style.height = 'auto';
+                
+                document.body.appendChild(printableArea);
+
+                try {
+                    const canvas = await html2canvas(printableArea, { 
+                        scale: 2,
+                        useCORS: true,
+                        windowWidth: printableArea.scrollWidth,
+                        windowHeight: printableArea.scrollHeight
+                    });
+                    
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgWidth = canvas.width;
+                    const imgHeight = canvas.height;
+
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+                    const ratio = pdfWidth / imgWidth;
+                    const scaledImgHeight = imgHeight * ratio;
+
+                    let heightLeft = scaledImgHeight;
+                    let position = 0;
+
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, scaledImgHeight);
+                    heightLeft -= pdfHeight;
+
+                    while (heightLeft > 0) {
+                        position -= pdfHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, scaledImgHeight);
+                        heightLeft -= pdfHeight;
+                    }
+                    
+                    pdf.save('documento-colibri.pdf');
+
+                } catch (error) {
+                    console.error("Error al generar PDF:", error);
+                    this.showAlert('Ocurrió un error al generar el PDF.');
+                } finally {
+                    document.body.removeChild(printableArea);
+                    this.hideModal('alert-modal-overlay');
+                    this.editor.style.zoom = originalZoom;
+                }
+            }
+
+            exportAsTxt() {
+                const textContent = this.editor.innerText;
+                const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'documento-colibri.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            deleteSelectedElement() {
+                this.restoreSelection();
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const node = selection.getRangeAt(0).commonAncestorContainer;
+                    const element = node.nodeType === 1 ? node : node.parentNode;
+                    const table = element.closest('table');
+                    const hr = element.closest('hr');
+                    if (table) table.remove();
+                    else if (hr) hr.remove();
+                    this.pushState();
+                }
+            }
+
+            insertChecklist() {
+                this.restoreSelection();
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+
+                const range = selection.getRangeAt(0);
+                const selectedText = selection.toString();
+
+                if (selectedText.trim().length > 0) {
+                    const lines = selectedText.split('\n').filter(line => line.trim() !== '');
+                    if (lines.length > 0) {
+                        const listHtml = lines.map(line => `<li><input type="checkbox"><label contenteditable="true">${line}</label></li>`).join('');
+                        const finalHtml = `<ul class="checklist">${listHtml}</ul>`;
+                        range.deleteContents();
+                        this.executeCommand('insertHTML', finalHtml);
+                    }
+                } else {
+                    const html = `<ul class="checklist"><li><input type="checkbox"><label contenteditable="true"><br></label></li></ul>`;
+                    this.executeCommand('insertHTML', html);
+                    
+                    const newRange = selection.getRangeAt(0);
+                    const li = newRange.startContainer.parentElement.closest('li');
+                    
+                    if (li && li.parentElement.classList.contains('checklist')) {
+                        const label = li.querySelector('label');
+                        if (label) {
+                            const focusRange = document.createRange();
+                            focusRange.setStart(label, 0);
+                            focusRange.collapse(true);
+                            selection.removeAllRanges();
+                            selection.addRange(focusRange);
+                        }
+                    }
+                }
+            }
+            
+            handleKeyDown(e) {
+                if (e.key === 'Enter') {
+                    this.handleChecklistEnter(e);
+                } else if (e.key === 'Backspace') {
+                    this.handleChecklistBackspace(e);
+                }
+            }
+
+            handleChecklistBackspace(e) {
+                const selection = window.getSelection();
+                if (!selection.rangeCount || !selection.isCollapsed) return;
+
+                const range = selection.getRangeAt(0);
+                const container = range.startContainer;
+                
+                if (range.startOffset === 0) {
+                    const element = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+                    const li = element.closest('li');
+
+                    if (li && li.parentElement?.classList.contains('checklist') && element.closest('label')) {
+                        if (!li.previousElementSibling) {
+                            e.preventDefault();
+                            const ul = li.parentElement;
+                            const p = document.createElement('p');
+                            p.innerHTML = li.querySelector('label').innerHTML;
+                            
+                            ul.replaceWith(p);
+
+                            const newRange = document.createRange();
+                            newRange.setStart(p, 0);
+                            newRange.collapse(true);
+                            selection.removeAllRanges();
+                            selection.addRange(newRange);
+                            this.pushState();
+                        }
+                    }
+                }
+            }
+
+            handleChecklistEnter(e) {
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+
+                const range = selection.getRangeAt(0);
+                const container = range.commonAncestorContainer;
+                
+                const element = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+                const li = element.closest('li');
+                const label = element.closest('label');
+
+                if (li && label && li.parentElement?.classList.contains('checklist')) {
+                    e.preventDefault(); 
+                    
+                    const isEffectivelyEmpty = (label.textContent.trim() === '' && label.innerHTML.replace(/<br\s*\/?>/g, '').trim() === '');
+
+                    if (isEffectivelyEmpty) {
+                        const p = document.createElement('p');
+                        p.innerHTML = '<br>';
+                
+                        const ul = li.parentElement;
+                        const nextLi = li.nextElementSibling;
+                
+                        if (nextLi) {
+                            const newUl = document.createElement('ul');
+                            newUl.className = 'checklist';
+                            let sibling = nextLi;
+                            while (sibling) {
+                                const toMove = sibling;
+                                sibling = sibling.nextElementSibling;
+                                newUl.appendChild(toMove);
+                            }
+                            ul.after(p, newUl);
+                        } else {
+                            ul.after(p);
+                        }
+                
+                        li.remove();
+                
+                        if (ul.children.length === 0) {
+                            ul.remove();
+                        }
+                
+                        const newRange = document.createRange();
+                        newRange.selectNodeContents(p);
+                        newRange.collapse(true);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+
+                    } else {
+                        const newLi = document.createElement('li');
+                        newLi.innerHTML = '<input type="checkbox"><label contenteditable="true"><br></label>';
+                        
+                        li.after(newLi);
+
+                        const newLabel = newLi.querySelector('label');
+                        const newRange = document.createRange();
+                        newRange.setStart(newLabel, 0);
+                        newRange.collapse(true);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+                    }
+                    this.pushState();
+                }
+            }
+
+            handleChecklistToggle(e) {
+                const target = e.target;
+                if (target.tagName === 'INPUT' && target.type === 'checkbox') {
+                    const li = target.closest('li');
+                    if (li) {
+                        li.classList.toggle('checked', target.checked);
+                        this.pushState();
+                    }
+                }
+            }
+            
+            // New functions for saving and loading documents with IndexedDB
+            showSaveModal() {
+                const saveInput = this.modalContainer.querySelector('#save-file-input');
+                // Si ya hay un documento abierto, pre-llenar el título
+                if (this.currentDocId) {
+                    this.getDocumentIndexedDB(this.currentDocId).then(docData => {
+                        if (docData) {
+                            saveInput.value = docData.title;
+                        }
+                    });
+                } else {
+                    const firstLine = this.editor.innerText.split('\n')[0] || '';
+                    saveInput.value = firstLine.substring(0, 50).trim() || 'Documento sin título';
+                }
+                this.showModal('save-modal-overlay', '#save-file-input');
+            }
+
+            newDocument() {
+                this.editor.innerHTML = '';
+                this.currentDocId = null;
+                this.history = [];
+                this.historyIndex = -1;
+                this.pushState();
+                this.showAlert("Nuevo documento creado.");
+            }
+
+
+            async saveDocument() {
+                const title = this.modalContainer.querySelector('#save-file-input').value.trim();
+                const content = this.getContent();
+
+                if (!this.db) {
+                    this.showAlert("Error: La base de datos no está disponible. No se puede guardar.");
+                    this.hideModal('save-modal-overlay');
+                    return;
+                }
+
+                if (!title) {
+                    this.showAlert("Por favor, ingresa un título para el documento.");
+                    return;
+                }
+
+                this.showAlert("Guardando documento...");
+                
+                try {
+                    let docData;
+                    if (this.currentDocId) {
+                         docData = {
+                            id: this.currentDocId,
+                            title: title,
+                            content: content,
+                            updatedAt: new Date(),
+                        };
+                    } else {
+                        docData = {
+                            title: title,
+                            content: content,
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                        };
+                    }
+                    
+                    const docId = await this.saveDocumentIndexedDB(docData);
+                    this.currentDocId = docId;
+                    this.showAlert("Documento guardado con éxito.");
+                    this.hideModal('save-modal-overlay');
+                } catch (e) {
+                    console.error("Error al guardar el documento:", e);
+                    this.showAlert("Ocurrió un error al guardar el documento. Inténtalo de nuevo.");
+                }
+            }
+
+            async showFilesModal() {
+                if (!this.db) {
+                    this.showAlert("La base de datos local no está disponible.");
+                    return;
+                }
+                
+                const filesList = this.modalContainer.querySelector('#files-list');
+                filesList.innerHTML = '<p style="text-align:center; padding: 20px;">Cargando archivos...</p>';
+                this.showModal('files-modal-overlay');
+
+                try {
+                    const documents = await this.getDocumentsIndexedDB();
+
+                    if (!documents || documents.length === 0) {
+                        filesList.innerHTML = '<p style="text-align:center; padding: 20px;">No tienes documentos guardados aún.</p>';
+                        return;
+                    }
+
+                    filesList.innerHTML = '';
+                    documents.forEach(doc => {
+                        const fileItem = document.createElement('li');
+                        fileItem.className = 'colibri-file-item';
+                        fileItem.dataset.id = doc.id;
+                        fileItem.innerHTML = `
+                            <div class="colibri-file-item-info">
+                                <h4>${doc.title}</h4>
+                                <p>Guardado: ${doc.updatedAt.toLocaleString()}</p>
+                            </div>
+                            <div class="colibri-file-item-actions">
+                                <button class="load-btn" title="Cargar"><i class="fas fa-file-alt"></i></button>
+                                <button class="delete-btn" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </div>
+                        `;
+                        filesList.appendChild(fileItem);
+                    });
+
+                    // Add event listeners to the new list items
+                    filesList.querySelectorAll('.load-btn').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const docId = parseInt(e.target.closest('li').dataset.id);
+                            this.showAlert("Cargando documento...");
+                            this.hideModal('files-modal-overlay');
+                            try {
+                                const docData = await this.getDocumentIndexedDB(docId);
+                                if (docData) {
+                                    this.editor.innerHTML = docData.content;
+                                    this.currentDocId = docData.id;
+                                    this.pushState(); 
+                                    this.showAlert("Documento cargado con éxito.");
+                                } else {
+                                    this.showAlert("El documento no se encontró.");
+                                }
+                            } catch (e) {
+                                console.error("Error al cargar el documento:", e);
+                                this.showAlert("Error al cargar el documento.");
+                            }
+                        });
+                    });
+
+                    filesList.querySelectorAll('.delete-btn').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            e.stopPropagation(); 
+                            const docId = parseInt(e.target.closest('li').dataset.id);
+                            const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar este documento?");
+                            if (confirmDelete) {
+                                this.showAlert("Eliminando documento...");
+                                try {
+                                    await this.deleteDocumentIndexedDB(docId);
+                                    e.target.closest('li').remove();
+                                    this.showAlert("Documento eliminado.");
+                                    if (docId === this.currentDocId) {
+                                        this.editor.innerHTML = ''; 
+                                        this.currentDocId = null;
+                                    }
+                                } catch (e) {
+                                    console.error("Error al eliminar el documento:", e);
+                                    this.showAlert("Error al eliminar el documento.");
+                                }
+                            }
+                        });
+                    });
+
+                } catch (e) {
+                    console.error("Error al listar los documentos:", e);
+                    filesList.innerHTML = '<p style="text-align:center; padding: 20px; color: red;">Error al cargar los documentos.</p>';
+                }
+            }
+
+            updateEditorState() {
+                // Not needed for IndexedDB
+            }
+        }
+
+        window.ColibriEditor = ColibriEditor;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const miEditor = new ColibriEditor('#editor-container');
+        });
+    </script>
+</body>
+</html>

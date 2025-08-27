@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- ID de Versión de la App -->
+    <meta name="app-version" content="2.2.0">
+    <title>Gestor de Listas de Caminatas v2.2</title>
+    <style>
+        /* Estilos Generales y Variables de Tema */
+        :root {
+            --color-primario: #a2c4c9;
+            --color-secundario: #d4e1f5;
+            --color-fondo: #f0f4f8;
+            --color-texto: #333333;
+            --color-acento: #f5b9a2;
+            --color-exito: #a2d5ab;
+            --color-error: #f5a2a2;
+            --color-blanco: #ffffff;
+            --sombra: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Paletas de Temas (8 en total) */
+        .theme-light { --color-primario: #a2c4c9; --color-secundario: #d4e1f5; --color-fondo: #f0f4f8; --color-texto: #333333; --color-acento: #f5b9a2; --color-exito: #a2d5ab; --color-error: #f5a2a2; --color-blanco: #ffffff; }
+        .theme-dark { --color-primario: #5a7a7d; --color-secundario: #34495e; --color-fondo: #1c2833; --color-texto: #d4e1f5; --color-acento: #e67e22; --color-blanco: #2c3e50; --color-exito: #27ae60; --color-error: #c0392b; }
+        .theme-sepia { --color-primario: #a1887f; --color-secundario: #d7ccc8; --color-fondo: #fbf5ef; --color-texto: #5d4037; --color-acento: #bcaaa4; --color-blanco: #efebe9; --color-exito: #81c784; --color-error: #e57373; }
+        .theme-forest { --color-primario: #4a7c59; --color-secundario: #a3b899; --color-fondo: #f0f2e6; --color-texto: #2c3e50; --color-acento: #d4ac6e; --color-blanco: #ffffff; }
+        .theme-ocean { --color-primario: #3498db; --color-secundario: #85c1e9; --color-fondo: #eaf2f8; --color-texto: #212f3c; --color-acento: #f5b041; --color-blanco: #ffffff; }
+        .theme-sunset { --color-primario: #e74c3c; --color-secundario: #f5b7b1; --color-fondo: #fdedec; --color-texto: #424242; --color-acento: #f39c12; --color-blanco: #ffffff; }
+        .theme-lavender { --color-primario: #8e44ad; --color-secundario: #d7bde2; --color-fondo: #f5eef8; --color-texto: #313131; --color-acento: #1abc9c; --color-blanco: #ffffff; }
+        .theme-mint { --color-primario: #16a085; --color-secundario: #a2d9ce; --color-fondo: #e8f6f3; --color-texto: #2c3e50; --color-acento: #f4d03f; --color-blanco: #ffffff; }
+
+
+        /* Estilos Base */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; }
+        body { background-color: var(--color-fondo); color: var(--color-texto); transition: background-color 0.3s, color 0.3s; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        h1, h2, h3 { margin-bottom: 1rem; color: var(--color-primario); }
+
+        /* Utilidades */
+        .card { background-color: var(--color-blanco); padding: 25px; margin-bottom: 25px; border: 1px solid var(--color-secundario); border-radius: 12px; box-shadow: var(--sombra); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 8px; font-weight: 600; }
+        input, select, button { padding: 12px; border-radius: 8px; border: 1px solid var(--color-secundario); background-color: var(--color-fondo); color: var(--color-texto); font-size: 1rem; transition: all 0.3s; }
+        input:focus, select:focus { outline: none; border-color: var(--color-acento); }
+        button { cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .btn { background-color: var(--color-primario); color: var(--color-blanco); }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn-secondary { background-color: var(--color-secundario); color: var(--color-texto); }
+        .btn-danger { background-color: var(--color-error); color: var(--color-blanco); }
+        .btn-warning { background-color: var(--color-acento); color: var(--color-blanco); }
+        .btn-outline { background-color: transparent; color: var(--color-primario); border: 2px solid var(--color-primario); }
+        .button-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1rem; }
+
+        /* Header y Controles de Tema */
+        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        #change-theme-btn { 
+            width: 50px; 
+            height: 50px; 
+            border-radius: 50%; 
+            border: 2px solid var(--color-secundario); 
+            background-color: var(--color-blanco); 
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #change-theme-btn svg {
+            width: 100%;
+            height: 100%;
+            fill: var(--color-texto);
+        }
+
+        /* Botón Flotante de WhatsApp */
+        #whatsapp-export-btn {
+            position: fixed;
+            bottom: 75px;
+            right: 25px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #25D366; /* Color de WhatsApp */
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 100;
+            border: none;
+            padding: 0;
+            transition: transform 0.2s ease-out;
+        }
+        #whatsapp-export-btn:hover { transform: scale(1.1); }
+
+        /* Lista de Participantes */
+        #participant-list { list-style: none; }
+        .participant-item { display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid var(--color-secundario); flex-wrap: wrap; }
+        .participant-item:last-child { border-bottom: none; }
+        .participant-item .consecutive { font-weight: bold; color: var(--color-primario); }
+        .participant-item .name { flex-grow: 1; }
+        .status-indicator { width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0; }
+        .status-reservado { background-color: var(--color-acento); }
+        .status-pendiente { background-color: var(--color-error); }
+        .status-cancelado { background-color: var(--color-exito); }
+
+        /* Autocomplete */
+        .autocomplete { position: relative; }
+        .autocomplete-items { position: absolute; border: 1px solid var(--color-secundario); border-top: none; z-index: 99; top: 100%; left: 0; right: 0; background-color: var(--color-blanco); max-height: 200px; overflow-y: auto; }
+        .autocomplete-items div { padding: 10px; cursor: pointer; }
+        .autocomplete-items div:hover { background-color: var(--color-secundario); }
+        .autocomplete-active { background-color: var(--color-primario) !important; color: var(--color-blanco); }
+
+        /* Tabs */
+        .tabs { display: flex; border-bottom: 2px solid var(--color-secundario); margin-bottom: 1.5rem; }
+        .tab-link { padding: 1rem 1.5rem; cursor: pointer; font-weight: 600; border: none; background: none; color: var(--color-texto); border-bottom: 3px solid transparent; }
+        .tab-link.active { color: var(--color-acento); border-bottom-color: var(--color-acento); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Modal de Confirmación */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
+        .modal-content { background-color: var(--color-blanco); padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; text-align: center; transform: scale(0.9); transition: transform 0.3s; }
+        .modal-overlay.visible .modal-content { transform: scale(1); }
+        #confirmation-counter { font-size: 1.5rem; font-weight: bold; margin: 1rem 0; color: var(--color-error); }
+        
+        /* Caminatas Guardadas */
+        #saved-hikes-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+        .hike-saved-btn { background-color: var(--color-blanco); border: 1px solid var(--color-secundario); padding: 1rem; border-radius: 12px; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; width: 100%; text-transform: none; }
+        .hike-saved-btn:hover { border-color: var(--color-primario); }
+        .hike-saved-btn strong { color: var(--color-primario); font-size: 1.1rem; }
+        .hike-saved-btn small { color: var(--color-texto); opacity: 0.8; }
+        .btn-delete-hike { background-color: var(--color-error); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; margin-left: 1rem; }
+    </style>
+</head>
+<body class="theme-light">
+
+    <div class="container">
+        <!-- Encabezado y controles -->
+        <header class="header card">
+            <div>
+                <h1>Gestor de Caminatas</h1>
+                <p>Crea y administra tus listas de caminatas de forma sencilla.</p>
+            </div>
+            <button id="change-theme-btn" title="Cambiar Tema">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+            </button>
+        </header>
+
+        <!-- Card para Importación Inicial de Contactos -->
+        <div id="initial-import-card" class="card" style="display: none; border-color: var(--color-primario); text-align: center;">
+            <h2>Bienvenido</h2>
+            <p>Parece que es la primera vez que usas la aplicación o tu base de datos de contactos está vacía.</p>
+            <p>Para comenzar, por favor importa tu archivo <strong>contactos_respaldo.json</strong>.</p>
+            <div class="button-group" style="justify-content: center;">
+                <button id="import-initial-contacts-btn" class="btn">Importar Contactos</button>
+                <input type="file" id="initial-contacts-input" accept=".json" style="display: none;">
+            </div>
+        </div>
+
+        <!-- Vista de Lista de Caminatas -->
+        <div id="hike-list-view" style="display: none;">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <h2>Caminatas Guardadas</h2>
+                    <button id="go-to-new-hike-btn" class="btn">Nueva Caminata</button>
+                </div>
+                <hr style="border: 1px solid var(--color-secundario); margin: 1rem 0;">
+                <div id="saved-hikes-list"></div>
+            </div>
+        </div>
+
+        <!-- Vista de Editor de Caminata -->
+        <div id="hike-editor-view" style="display: none;">
+            <!-- Información de la Caminata -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <h2 id="editor-title">Nueva Caminata</h2>
+                    <button id="back-to-list-btn" class="btn-outline">Volver a la Lista</button>
+                </div>
+                 <hr style="border: 1px solid var(--color-secundario); margin: 1rem 0;">
+                <form id="hike-form" class="form-grid">
+                    <input type="hidden" id="hike-id">
+                    <div class="form-group">
+                        <label for="hike-name">Nombre</label>
+                        <input type="text" id="hike-name" class="uppercase-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-date">Fecha</label>
+                        <input type="date" id="hike-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-date-from">Desde</label>
+                        <input type="date" id="hike-date-from">
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-date-to">Hasta</label>
+                        <input type="date" id="hike-date-to">
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-price">Precio (¢)</label>
+                        <input type="text" inputmode="numeric" id="hike-price" class="numeric-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-distance">Distancia (km)</label>
+                        <input type="text" inputmode="numeric" id="hike-distance" class="numeric-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-capacity">Capacidad</label>
+                        <select id="hike-capacity">
+                            <option value="">N/A</option><option value="14">14</option><option value="17">17</option><option value="28">28</option><option value="31">31</option><option value="36">36</option><option value="42">42</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-difficulty">Dificultad</label>
+                        <select id="hike-difficulty">
+                            <option value="">N/A</option><option value="Paseo">Paseo</option><option value="Básico">Básico</option><option value="Intermedio">Intermedio</option><option value="Difícil">Difícil</option><option value="Avanzado">Avanzado</option><option value="Técnico">Técnico</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-reservation">Reserva con</label>
+                        <select id="hike-reservation">
+                            <option value="">N/A</option><option value="3000">¢3,000</option><option value="5000">¢5,000</option><option value="8000">¢8,000</option><option value="10000">¢10,000</option><option value="15000">¢15,000</option><option value="35000">¢35,000</option><option value="50000">¢50,000</option><option value="60000">¢60,000</option><option value="70000">¢70,000</option><option value="80000">¢80,000</option><option value="100000">¢100,000</option>
+                        </select>
+                    </div>
+                </form>
+                <div class="button-group">
+                    <button id="save-hike-btn" class="btn">Guardar Caminata</button>
+                </div>
+            </div>
+
+            <!-- Lista de Interesados y Gestión de Contactos -->
+            <div class="card">
+                <div class="tabs">
+                    <button class="tab-link active" data-tab="tab-participants">Lista de Interesados</button>
+                    <button class="tab-link" data-tab="tab-new-contact">Agregar Nuevo Contacto</button>
+                </div>
+
+                <!-- Pestaña: Lista de Interesados -->
+                <div id="tab-participants" class="tab-content active">
+                    <h3>Agregar Caminante</h3>
+                    <form id="add-participant-form" class="form-grid" style="grid-template-columns: 1fr auto;">
+                        <div class="form-group autocomplete">
+                            <label for="participant-name">Buscar o escribir nombre</label>
+                            <input type="text" id="participant-name" class="title-case-input" placeholder="Empieza a escribir un nombre...">
+                        </div>
+                        <div class="form-group" style="justify-content: flex-end;">
+                            <button type="submit" class="btn">Agregar</button>
+                        </div>
+                    </form>
+                    <h3 style="margin-top: 2rem;">Lista de Participantes</h3>
+                    <ul id="participant-list"></ul>
+                </div>
+
+                <!-- Pestaña: Agregar Nuevo Contacto -->
+                <div id="tab-new-contact" class="tab-content">
+                    <h3>Formulario de Nuevo Contacto</h3>
+                    <form id="new-contact-form" class="form-grid">
+                        <div class="form-group"><label for="contact-nombre">Nombre</label><input type="text" id="contact-nombre" class="title-case-input" required></div>
+                        <div class="form-group"><label for="contact-apellido1">Primer Apellido</label><input type="text" id="contact-apellido1" class="title-case-input"></div>
+                        <div class="form-group"><label for="contact-apellido2">Segundo Apellido</label><input type="text" id="contact-apellido2" class="title-case-input"></div>
+                        <div class="form-group"><label for="contact-telefono">Teléfono</label><input type="tel" id="contact-telefono" class="numeric-input" maxlength="8"></div>
+                        <div class="form-group"><label for="contact-email">Email</label><input type="email" id="contact-email"></div>
+                        <div class="form-group"><label for="contact-cedula">Cédula</label><input type="text" id="contact-cedula"></div>
+                    </form>
+                     <div class="button-group"><button id="save-contact-btn" class="btn">Guardar Contacto</button></div>
+                </div>
+            </div>
+            
+            <!-- Gestión de Datos y Actualización -->
+            <div class="card">
+                <h2>Gestión de Datos y App</h2>
+                <p>Respalda, restaura o fusiona datos. Mantén tu aplicación actualizada.</p>
+                <div class="button-group">
+                    <button id="backup-btn" class="btn-secondary">Respaldar a JSON</button>
+                    <button id="restore-btn" class="btn-warning">Restaurar desde JSON</button>
+                    <button id="merge-btn" class="btn-outline">Fusionar desde JSON</button>
+                    <button id="update-app-btn" class="btn">Actualizar App</button>
+                    <input type="file" id="restore-input" accept=".json" style="display: none;">
+                    <input type="file" id="merge-input" accept=".json" style="display: none;">
+                </div>
+                <p id="app-version-display" style="text-align: right; margin-top: 1rem; font-size: 0.9rem; opacity: 0.7;"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botón Flotante de WhatsApp -->
+    <button id="whatsapp-export-btn" title="Exportar a WhatsApp">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-whatsapp" viewBox="0 0 16 16">
+            <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+        </svg>
+    </button>
+
+    <!-- Modal de Confirmación -->
+    <div id="confirmation-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="modal-title">¿Estás seguro?</h2>
+            <p id="modal-message">Esta acción no se puede deshacer. Por favor, confirma.</p>
+            <div id="confirmation-counter"></div>
+            <div class="button-group" style="justify-content: center;">
+                <button id="modal-confirm-btn" class="btn-danger">Confirmar</button>
+                <button id="modal-cancel-btn" class="btn-outline">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- INICIALIZACIÓN Y CONFIGURACIÓN DE LA BASE DE DATOS ---
+        const DB_NAME = 'HikeListsDB';
+        const DB_VERSION = 1;
+        let db;
+
+        function initializeDB() {
+            return new Promise((resolve, reject) => {
+                if (!('indexedDB' in window)) {
+                    console.warn('IndexedDB no soportado. Usando localStorage como fallback.');
+                    resolve('localStorage');
+                    return;
+                }
+
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = (event) => {
+                    console.error('Error al abrir IndexedDB:', event.target.error);
+                    console.warn('Cambiando a localStorage por error en IndexedDB.');
+                    resolve('localStorage');
+                };
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('IndexedDB inicializado correctamente.');
+                    resolve('indexedDB');
+                };
+                request.onupgradeneeded = (event) => {
+                    const dbInstance = event.target.result;
+                    if (!dbInstance.objectStoreNames.contains('hikes')) {
+                        dbInstance.createObjectStore('hikes', { keyPath: 'id', autoIncrement: true });
+                    }
+                    if (!dbInstance.objectStoreNames.contains('contacts')) {
+                        const contactsStore = dbInstance.createObjectStore('contacts', { keyPath: 'id', autoIncrement: true });
+                        contactsStore.createIndex('fullName', 'fullName', { unique: false });
+                    }
+                };
+            });
+        }
+        
+        // --- LÓGICA DE ALMACENAMIENTO (ABSTRACCIÓN) ---
+        const storage = {
+            async _getStore(storeName, mode) {
+                if (db) return db.transaction(storeName, mode).objectStore(storeName);
+                return null;
+            },
+            async _getFromLocalStorage(storeName) { return JSON.parse(localStorage.getItem(storeName) || '[]'); },
+            async _saveToLocalStorage(storeName, data) { localStorage.setItem(storeName, JSON.stringify(data)); },
+            async add(storeName, item) {
+                const store = await this._getStore(storeName, 'readwrite');
+                if (store) {
+                    return new Promise((resolve, reject) => {
+                        const request = store.add(item);
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = (e) => reject(e.target.error);
+                    });
+                } else {
+                    const data = await this._getFromLocalStorage(storeName);
+                    item.id = Date.now();
+                    data.push(item);
+                    await this._saveToLocalStorage(storeName, data);
+                    return item.id;
+                }
+            },
+            async get(storeName, id) {
+                 const store = await this._getStore(storeName, 'readonly');
+                 if (store) {
+                     return new Promise((resolve, reject) => {
+                         const request = store.get(id);
+                         request.onsuccess = () => resolve(request.result);
+                         request.onerror = (e) => reject(e.target.error);
+                     });
+                 } else {
+                     const data = await this._getFromLocalStorage(storeName);
+                     return data.find(item => item.id === id);
+                 }
+            },
+            async getAll(storeName) {
+                const store = await this._getStore(storeName, 'readonly');
+                if (store) {
+                    return new Promise((resolve, reject) => {
+                        const request = store.getAll();
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = (e) => reject(e.target.error);
+                    });
+                } else { return this._getFromLocalStorage(storeName); }
+            },
+            async update(storeName, item) {
+                const store = await this._getStore(storeName, 'readwrite');
+                if (store) {
+                    return new Promise((resolve, reject) => {
+                        const request = store.put(item);
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = (e) => reject(e.target.error);
+                    });
+                } else {
+                    let data = await this._getFromLocalStorage(storeName);
+                    const index = data.findIndex(d => d.id === item.id);
+                    if (index > -1) data[index] = item;
+                    await this._saveToLocalStorage(storeName, data);
+                    return item.id;
+                }
+            },
+            async delete(storeName, id) {
+                const store = await this._getStore(storeName, 'readwrite');
+                if (store) {
+                    return new Promise((resolve, reject) => {
+                        const request = store.delete(id);
+                        request.onsuccess = () => resolve();
+                        request.onerror = (e) => reject(e.target.error);
+                    });
+                } else {
+                    let data = await this._getFromLocalStorage(storeName);
+                    data = data.filter(item => item.id !== id);
+                    await this._saveToLocalStorage(storeName, data);
+                }
+            },
+            async clear(storeName) {
+                const store = await this._getStore(storeName, 'readwrite');
+                if (store) {
+                    return new Promise((resolve, reject) => {
+                        const request = store.clear();
+                        request.onsuccess = () => resolve();
+                        request.onerror = (e) => reject(e.target.error);
+                    });
+                } else { localStorage.removeItem(storeName); }
+            }
+        };
+
+        // --- ESTADO DE LA APLICACIÓN ---
+        let currentHike = null;
+        let allContacts = [];
+        const APP_VERSION = document.querySelector('meta[name="app-version"]').content;
+
+        // --- LÓGICA DE LA INTERFAZ (UI) ---
+
+        // Controles de Tema
+        const themes = ['theme-light', 'theme-dark', 'theme-sepia', 'theme-forest', 'theme-ocean', 'theme-sunset', 'theme-lavender', 'theme-mint'];
+        const changeThemeBtn = document.getElementById('change-theme-btn');
+        
+        changeThemeBtn.addEventListener('click', () => {
+            const currentTheme = document.body.className;
+            let currentIndex = themes.indexOf(currentTheme);
+            let nextIndex = (currentIndex + 1) % themes.length;
+            const newTheme = themes[nextIndex];
+            
+            document.body.className = newTheme;
+            localStorage.setItem('hikeAppTheme', newTheme);
+        });
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('hikeAppTheme') || 'theme-light';
+            document.body.className = savedTheme;
+        }
+        
+        // Tabs
+        const tabLinks = document.querySelectorAll('.tab-link');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                const tabId = link.getAttribute('data-tab');
+                tabLinks.forEach(l => l.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                link.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Formulario de Caminata
+        const hikeForm = document.getElementById('hike-form');
+        const hikeIdInput = document.getElementById('hike-id');
+        
+        function getHikeDataFromForm() {
+            return {
+                id: currentHike?.id ? Number(currentHike.id) : undefined,
+                nombre: document.getElementById('hike-name').value.trim().toUpperCase(),
+                fecha: document.getElementById('hike-date').value,
+                fechaDesde: document.getElementById('hike-date-from').value,
+                fechaHasta: document.getElementById('hike-date-to').value,
+                precio: document.getElementById('hike-price').value,
+                distancia: document.getElementById('hike-distance').value,
+                capacidad: document.getElementById('hike-capacity').value,
+                dificultad: document.getElementById('hike-difficulty').value,
+                reservaCon: document.getElementById('hike-reservation').value,
+                participants: currentHike?.participants || []
+            };
+        }
+
+        function loadHikeData(hike) {
+            currentHike = hike;
+            hikeIdInput.value = hike.id || '';
+            document.getElementById('hike-name').value = hike.nombre || '';
+            document.getElementById('hike-date').value = hike.fecha || '';
+            document.getElementById('hike-date-from').value = hike.fechaDesde || '';
+            document.getElementById('hike-date-to').value = hike.fechaHasta || '';
+            document.getElementById('hike-price').value = hike.precio || '';
+            document.getElementById('hike-distance').value = hike.distancia || '';
+            document.getElementById('hike-capacity').value = hike.capacidad || '';
+            document.getElementById('hike-difficulty').value = hike.dificultad || '';
+            document.getElementById('hike-reservation').value = hike.reservaCon || '';
+            renderParticipantList();
+        }
+
+        function clearHikeForm() {
+            currentHike = { participants: [] };
+            hikeForm.reset();
+            hikeIdInput.value = '';
+            renderParticipantList();
+        }
+
+        const saveHikeLogic = async (showAlert = false) => {
+            const hikeData = getHikeDataFromForm();
+            if (!hikeData.nombre) {
+                if (showAlert) alert('El nombre de la caminata es obligatorio.');
+                return;
+            }
+            if (hikeData.id) {
+                await storage.update('hikes', hikeData);
+            } else {
+                delete hikeData.id;
+                const newId = await storage.add('hikes', hikeData);
+                hikeData.id = newId;
+                currentHike = hikeData;
+                hikeIdInput.value = newId;
+            }
+            if (showAlert) alert('Caminata guardada con éxito.');
+            await loadHikes();
+        };
+
+        document.getElementById('save-hike-btn').addEventListener('click', () => saveHikeLogic(true));
+        
+        // Gestión de Contactos
+        async function loadAllContacts() {
+            allContacts = await storage.getAll('contacts');
+        }
+
+        document.getElementById('save-contact-btn').addEventListener('click', async () => {
+            const newContact = {
+                nombre: document.getElementById('contact-nombre').value.trim(),
+                apellido1: document.getElementById('contact-apellido1').value.trim(),
+                apellido2: document.getElementById('contact-apellido2').value.trim(),
+                telefono: document.getElementById('contact-telefono').value.trim(),
+                email: document.getElementById('contact-email').value.trim(),
+                cedula: document.getElementById('contact-cedula').value.trim(),
+            };
+            if (!newContact.nombre) {
+                alert('El nombre del contacto es obligatorio.');
+                return;
+            }
+            newContact.fullName = `${newContact.nombre} ${newContact.apellido1} ${newContact.apellido2}`.trim().replace(/\s+/g, ' ');
+            await storage.add('contacts', newContact);
+            await loadAllContacts();
+            document.getElementById('new-contact-form').reset();
+            alert('Contacto guardado.');
+            document.querySelector('.tab-link[data-tab="tab-participants"]').click();
+        });
+
+        // Gestión de Participantes
+        const participantList = document.getElementById('participant-list');
+        const participantNameInput = document.getElementById('participant-name');
+        
+        document.getElementById('add-participant-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = participantNameInput.value.trim();
+            if (name && currentHike) {
+                if (!currentHike.participants) currentHike.participants = [];
+                currentHike.participants.push({ id: Date.now(), name: name, status: 'Pendiente' });
+                renderParticipantList();
+                participantNameInput.value = '';
+                saveHikeLogic(false);
+            }
+        });
+
+        function renderParticipantList() {
+            participantList.innerHTML = '';
+            if (!currentHike || !currentHike.participants) return;
+            currentHike.participants.forEach((p, index) => {
+                const li = document.createElement('li');
+                li.className = 'participant-item';
+                li.innerHTML = `
+                    <div class="status-indicator status-${p.status.toLowerCase()}"></div>
+                    <span class="consecutive">${index + 1}.</span>
+                    <span class="name">${p.name}</span>
+                    <select class="status-select" data-id="${p.id}">
+                        <option value="Pendiente" ${p.status === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                        <option value="Reservado" ${p.status === 'Reservado' ? 'selected' : ''}>Reservado</option>
+                        <option value="Cancelado" ${p.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+                    </select>
+                    <button class="btn-danger delete-participant-btn" data-id="${p.id}">Borrar</button>
+                `;
+                participantList.appendChild(li);
+            });
+        }
+        
+        participantList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-participant-btn')) {
+                const participantId = Number(e.target.dataset.id);
+                showConfirmationModal('Borrar Participante', '¿Realmente deseas eliminar a este participante?', () => {
+                    currentHike.participants = currentHike.participants.filter(p => p.id !== participantId);
+                    renderParticipantList();
+                    saveHikeLogic(false);
+                });
+            }
+        });
+
+        participantList.addEventListener('change', (e) => {
+            if (e.target.classList.contains('status-select')) {
+                const participantId = Number(e.target.dataset.id);
+                const newStatus = e.target.value;
+                const participant = currentHike.participants.find(p => p.id === participantId);
+                if (participant) participant.status = newStatus;
+                renderParticipantList();
+                saveHikeLogic(false);
+            }
+        });
+
+        // Autocomplete
+        let currentFocus;
+        participantNameInput.addEventListener("input", function(e) {
+            let a, b, val = this.value;
+            closeAllLists();
+            if (!val) return false;
+            currentFocus = -1;
+            a = document.createElement("DIV");
+            a.setAttribute("id", this.id + "autocomplete-list");
+            a.setAttribute("class", "autocomplete-items");
+            this.parentNode.appendChild(a);
+            const filteredContacts = allContacts.filter(contact => contact.fullName.toLowerCase().includes(val.toLowerCase()));
+            filteredContacts.forEach(contact => {
+                b = document.createElement("DIV");
+                b.innerHTML = `<strong>${contact.fullName.substr(0, val.length)}</strong>${contact.fullName.substr(val.length)}<input type='hidden' value='${contact.fullName}'>`;
+                b.addEventListener("click", function(e) {
+                    participantNameInput.value = this.getElementsByTagName("input")[0].value;
+                    closeAllLists();
+                });
+                a.appendChild(b);
+            });
+        });
+        participantNameInput.addEventListener("keydown", function(e) {
+            let x = document.getElementById(this.id + "autocomplete-list");
+            if (x) x = x.getElementsByTagName("div");
+            if (e.keyCode == 40) { currentFocus++; addActive(x); } 
+            else if (e.keyCode == 38) { currentFocus--; addActive(x); } 
+            else if (e.keyCode == 13) { e.preventDefault(); if (currentFocus > -1) { if (x) x[currentFocus].click(); } }
+        });
+        function addActive(x) {
+            if (!x) return false;
+            removeActive(x);
+            if (currentFocus >= x.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = (x.length - 1);
+            x[currentFocus].classList.add("autocomplete-active");
+        }
+        function removeActive(x) { for (let i = 0; i < x.length; i++) x[i].classList.remove("autocomplete-active"); }
+        function closeAllLists(elmnt) {
+            const x = document.getElementsByClassName("autocomplete-items");
+            for (let i = 0; i < x.length; i++) {
+                if (elmnt != x[i] && elmnt != participantNameInput) x[i].parentNode.removeChild(x[i]);
+            }
+        }
+        document.addEventListener("click", (e) => closeAllLists(e.target));
+
+        // Modal de Confirmación
+        const modal = document.getElementById('confirmation-modal');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const confirmationCounter = document.getElementById('confirmation-counter');
+        let confirmCallback = null;
+        let confirmationNeeded = 3;
+        let currentConfirmationCount = 0;
+        let modalMode = 'confirm';
+
+        function showConfirmationModal(title, message, callback, options = { mode: 'confirm' }) {
+            modalMode = options.mode;
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').innerHTML = message;
+            confirmCallback = callback;
+            
+            if (modalMode === 'confirm') {
+                currentConfirmationCount = 0;
+                updateConfirmationCounter();
+                confirmationCounter.style.display = 'block';
+                modalCancelBtn.style.display = 'inline-block';
+                modalConfirmBtn.textContent = 'Confirmar';
+                modalConfirmBtn.className = 'btn-danger';
+            } else { // 'info' mode
+                confirmationCounter.style.display = 'none';
+                modalCancelBtn.style.display = 'none';
+                modalConfirmBtn.textContent = 'Entendido';
+                modalConfirmBtn.className = 'btn';
+            }
+            
+            modal.classList.add('visible');
+        }
+
+        function hideConfirmationModal() { modal.classList.remove('visible'); confirmCallback = null; }
+        function updateConfirmationCounter() { confirmationCounter.textContent = `Confirmaciones restantes: ${confirmationNeeded - currentConfirmationCount}`; }
+        
+        modalConfirmBtn.addEventListener('click', () => {
+            if (modalMode === 'confirm') {
+                currentConfirmationCount++;
+                updateConfirmationCounter();
+                if (currentConfirmationCount >= confirmationNeeded) {
+                    if (confirmCallback) confirmCallback();
+                    hideConfirmationModal();
+                }
+            } else { // 'info' mode
+                if (confirmCallback) confirmCallback();
+                hideConfirmationModal();
+            }
+        });
+
+        modalCancelBtn.addEventListener('click', hideConfirmationModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) hideConfirmationModal(); });
+
+        // Respaldo, Restauración y Fusión
+        document.getElementById('backup-btn').addEventListener('click', async () => {
+            const hikes = await storage.getAll('hikes');
+            const contacts = await storage.getAll('contacts');
+            const backupData = { hikes, contacts, backupDate: new Date().toISOString() };
+            const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `caminatas_respaldo_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        const restoreInput = document.getElementById('restore-input');
+        document.getElementById('restore-btn').addEventListener('click', () => restoreInput.click());
+        restoreInput.addEventListener('change', (event) => {
+            handleFile(event, 'restore');
+            restoreInput.value = '';
+        });
+
+        const mergeInput = document.getElementById('merge-input');
+        document.getElementById('merge-btn').addEventListener('click', () => mergeInput.click());
+        mergeInput.addEventListener('change', (event) => {
+            handleFile(event, 'merge');
+            mergeInput.value = '';
+        });
+
+        function handleFile(event, mode) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.hikes && data.contacts) {
+                        const title = mode === 'restore' ? 'Restaurar Respaldo' : 'Fusionar Respaldo';
+                        const message = mode === 'restore' 
+                            ? 'Esto borrará TODOS los datos actuales y los reemplazará con los del archivo. ¿Deseas continuar?'
+                            : 'Esto agregará nuevos datos y actualizará los existentes sin borrar. ¿Deseas continuar?';
+                        
+                        showConfirmationModal(title, message, async () => {
+                            if (mode === 'restore') {
+                                await storage.clear('hikes');
+                                await storage.clear('contacts');
+                                for (const hike of data.hikes) { delete hike.id; await storage.add('hikes', hike); }
+                                for (const contact of data.contacts) { delete contact.id; await storage.add('contacts', contact); }
+                            } else { // Merge logic
+                                // Merge Contacts
+                                const existingContacts = await storage.getAll('contacts');
+                                const existingContactNames = new Set(existingContacts.map(c => c.fullName.toLowerCase()));
+                                for (const newContact of data.contacts) {
+                                    if (!existingContactNames.has(newContact.fullName.toLowerCase())) {
+                                        delete newContact.id;
+                                        await storage.add('contacts', newContact);
+                                    }
+                                }
+                                // Merge Hikes
+                                const existingHikes = await storage.getAll('hikes');
+                                const existingHikeNames = new Set(existingHikes.map(h => h.nombre.toUpperCase()));
+                                for (const newHike of data.hikes) {
+                                    if (!existingHikeNames.has(newHike.nombre.toUpperCase())) {
+                                        delete newHike.id;
+                                        await storage.add('hikes', newHike);
+                                    }
+                                }
+                            }
+                            alert('Operación completada con éxito.');
+                            location.reload();
+                        });
+                    } else { alert('Archivo de respaldo inválido.'); }
+                } catch (error) { console.error('Error al parsear el archivo JSON:', error); alert('Error al leer el archivo de respaldo.'); }
+            };
+            reader.readAsText(file);
+        }
+        
+        // Exportar a WhatsApp
+        document.getElementById('whatsapp-export-btn').addEventListener('click', () => {
+            const hikeToExport = getHikeDataFromForm();
+            if (!hikeToExport.nombre) {
+                alert('No hay información de caminata para exportar. Asegúrate de que tenga un nombre.');
+                return;
+            }
+            let message = `*${hikeToExport.nombre}*\n\n`;
+            const fields = [
+                { label: 'Fecha', value: hikeToExport.fecha },
+                { label: 'Desde', value: hikeToExport.fechaDesde },
+                { label: 'Hasta', value: hikeToExport.fechaHasta },
+                { label: 'Precio', value: hikeToExport.precio, prefix: '¢' },
+                { label: 'Distancia', value: hikeToExport.distancia, suffix: ' km' },
+                { label: 'Capacidad', value: hikeToExport.capacidad },
+                { label: 'Dificultad', value: hikeToExport.dificultad },
+                { label: 'Reserva con', value: hikeToExport.reservaCon, prefix: '¢' },
+            ];
+            fields.forEach(field => {
+                if (field.value && field.value !== '0' && field.value !== 'N/A') {
+                    message += `*${field.label}:* ${field.prefix || ''}${field.value}${field.suffix || ''}\n`;
+                }
+            });
+            if (hikeToExport.participants && hikeToExport.participants.length > 0) {
+                message += '\n*Lista de Interesados:*\n';
+                hikeToExport.participants.forEach((p, index) => {
+                    let statusEmoji = '';
+                    if (p.status === 'Reservado') statusEmoji = '🟡 ';
+                    if (p.status === 'Cancelado') statusEmoji = '🟢 ';
+                    message += `${index + 1}. ${statusEmoji}${p.name} - ${p.status}\n`;
+                });
+            }
+            const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        });
+
+        // VALIDACIÓN Y FORMATEO DE INPUTS
+        function toTitleCase(str) {
+            if (!str) return '';
+            return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
+        document.body.addEventListener('input', (e) => {
+            const target = e.target;
+            if (target.classList.contains('uppercase-input')) {
+                const start = target.selectionStart;
+                target.value = target.value.toUpperCase();
+                target.setSelectionRange(start, start);
+            }
+            if (target.classList.contains('title-case-input')) {
+                const start = target.selectionStart;
+                target.value = toTitleCase(target.value);
+                target.setSelectionRange(start, start);
+            }
+            if (target.classList.contains('numeric-input')) {
+                if (target.id === 'contact-telefono') {
+                    target.value = target.value.replace(/[^0-9]/g, '');
+                } else {
+                    let value = target.value.replace(/[^0-9.]/g, '');
+                    let parts = value.split('.');
+                    if (parts.length > 2) value = parts[0] + '.' + parts.slice(1).join('');
+                    target.value = value;
+                }
+            }
+        });
+
+        // NAVEGACIÓN ENTRE VISTAS
+        const hikeListView = document.getElementById('hike-list-view');
+        const hikeEditorView = document.getElementById('hike-editor-view');
+        const editorTitle = document.getElementById('editor-title');
+        function showListView() { hikeListView.style.display = 'block'; hikeEditorView.style.display = 'none'; }
+        function showEditorView(isNew = false) {
+            hikeListView.style.display = 'none';
+            hikeEditorView.style.display = 'block';
+            editorTitle.textContent = isNew ? 'Nueva Caminata' : 'Editar Caminata';
+        }
+        document.getElementById('go-to-new-hike-btn').addEventListener('click', () => { clearHikeForm(); showEditorView(true); });
+        document.getElementById('back-to-list-btn').addEventListener('click', showListView);
+
+        // LÓGICA DE CAMINATAS GUARDADAS
+        const savedHikesList = document.getElementById('saved-hikes-list');
+        async function loadHikes() {
+            savedHikesList.innerHTML = '';
+            const hikes = await storage.getAll('hikes');
+            if (hikes.length === 0) {
+                savedHikesList.innerHTML = '<p>No hay caminatas guardadas. ¡Crea una nueva!</p>';
+            } else {
+                hikes.forEach(hike => {
+                    const btnContainer = document.createElement('div');
+                    btnContainer.className = 'hike-saved-btn';
+                    btnContainer.innerHTML = `
+                        <div>
+                            <strong>${hike.nombre}</strong><br>
+                            <small>${hike.fecha || 'Sin fecha'}</small>
+                        </div>
+                        <button class="btn-delete-hike" data-id="${hike.id}">X</button>
+                    `;
+                    btnContainer.addEventListener('click', async (e) => {
+                        if (e.target.classList.contains('btn-delete-hike')) {
+                            e.stopPropagation();
+                            const hikeId = Number(e.target.dataset.id);
+                            showConfirmationModal('Borrar Caminata', '¿Estás seguro de que quieres borrar esta caminata?', async () => {
+                                await storage.delete('hikes', hikeId);
+                                await loadHikes();
+                            });
+                        } else {
+                            const fullHike = await storage.get('hikes', hike.id);
+                            loadHikeData(fullHike);
+                            showEditorView(false);
+                        }
+                    });
+                    savedHikesList.appendChild(btnContainer);
+                });
+            }
+        }
+        
+        // SISTEMA DE ACTUALIZACIÓN
+        document.getElementById('app-version-display').textContent = `Versión: ${APP_VERSION}`;
+        document.getElementById('update-app-btn').addEventListener('click', () => {
+            const message = `
+                <p>Esta aplicación no se puede actualizar automáticamente porque es un archivo local.</p>
+                <p style="margin-top: 1rem;"><strong>Para usar una nueva versión:</strong></p>
+                <ol style="text-align: left; margin: 1rem auto; max-width: 90%; padding-left: 2rem;">
+                    <li><strong>Descarga</strong> el nuevo archivo <code>.html</code>.</li>
+                    <li><strong>Ábrelo</strong> en tu navegador.</li>
+                </ol>
+                <p>Tus datos (caminatas y contactos) se mantendrán seguros en el navegador.</p>
+            `;
+            showConfirmationModal(
+                'Instrucciones de Actualización',
+                message,
+                () => {}, // No action needed on close
+                { mode: 'info' }
+            );
+        });
+
+        // LÓGICA DE INICIO DE LA APLICACIÓN
+        async function startApp() {
+            await loadAllContacts();
+            await loadHikes();
+            showListView();
+        }
+
+        async function main() {
+            loadTheme();
+            await initializeDB();
+            const contactsInDB = await storage.getAll('contacts');
+            if (contactsInDB.length === 0) {
+                const importCard = document.getElementById('initial-import-card');
+                const importBtn = document.getElementById('import-initial-contacts-btn');
+                const importInput = document.getElementById('initial-contacts-input');
+                importCard.style.display = 'block';
+                importBtn.addEventListener('click', () => importInput.click());
+                importInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            if (data.contacts && Array.isArray(data.contacts)) {
+                                importBtn.textContent = 'Importando...';
+                                importBtn.disabled = true;
+                                for (const contact of data.contacts) {
+                                    contact.fullName = `${contact.nombre} ${contact.apellido1 || ''} ${contact.apellido2 || ''}`.trim().replace(/\s+/g, ' ');
+                                    delete contact.id;
+                                    await storage.add('contacts', contact);
+                                }
+                                alert('¡Contactos importados con éxito!');
+                                importCard.style.display = 'none';
+                                await startApp(); 
+                            } else { alert('El archivo JSON no tiene el formato esperado.'); }
+                        } catch (error) { console.error('Error al procesar el archivo JSON:', error); alert('Hubo un error al leer o procesar el archivo de contactos.'); }
+                    };
+                    reader.readAsText(file);
+                });
+            } else { await startApp(); }
+        }
+
+        main();
+    });
+    </script>
+</body>
+</html>
