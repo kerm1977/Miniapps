@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- ID de Versión de la App -->
-    <meta name="app-version" content="2.2.0">
-    <title>Gestor de Listas de Caminatas v2.2</title>
+    <meta name="app-version" content="2.6.0">
+    <!-- El SHA del commit de esta versión. Debe actualizarse manually en cada subida. -->
+    <meta name="app-commit-sha" content="INICIAL">
+    <title>Gestor de Listas de Caminatas v2.6</title>
     <style>
         /* Estilos Generales y Variables de Tema */
         :root {
@@ -101,9 +103,10 @@
         .participant-item .consecutive { font-weight: bold; color: var(--color-primario); }
         .participant-item .name { flex-grow: 1; }
         .status-indicator { width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0; }
-        .status-reservado { background-color: var(--color-acento); }
-        .status-pendiente { background-color: var(--color-error); }
-        .status-cancelado { background-color: var(--color-exito); }
+        .status-reservado { background-color: #f1c40f; } /* Amarillo */
+        .status-pendiente { background-color: #e74c3c; } /* Rojo */
+        .status-cancelado { background-color: #2ecc71; } /* Verde */
+        .abonos-select { font-weight: bold; }
 
         /* Autocomplete */
         .autocomplete { position: relative; }
@@ -200,8 +203,23 @@
                         <input type="date" id="hike-date-to">
                     </div>
                     <div class="form-group">
-                        <label for="hike-price">Precio (¢)</label>
+                        <label for="hike-currency">Moneda</label>
+                        <select id="hike-currency">
+                            <option value="¢">Colones (¢)</option>
+                            <option value="$">Dólares ($)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-price">Precio</label>
                         <input type="text" inputmode="numeric" id="hike-price" class="numeric-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-exchange-rate">Tipo de Cambio</label>
+                        <input type="text" inputmode="numeric" id="hike-exchange-rate" class="numeric-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="hike-total-converted">Total Convertido (¢)</label>
+                        <input type="text" id="hike-total-converted" readonly style="background-color: var(--color-secundario);">
                     </div>
                     <div class="form-group">
                         <label for="hike-distance">Distancia (km)</label>
@@ -277,7 +295,7 @@
                     <button id="backup-btn" class="btn-secondary">Respaldar a JSON</button>
                     <button id="restore-btn" class="btn-warning">Restaurar desde JSON</button>
                     <button id="merge-btn" class="btn-outline">Fusionar desde JSON</button>
-                    <button id="update-app-btn" class="btn">Actualizar App</button>
+                    <button id="update-app-btn" class="btn">Verificar Cambios</button>
                     <input type="file" id="restore-input" accept=".json" style="display: none;">
                     <input type="file" id="merge-input" accept=".json" style="display: none;">
                 </div>
@@ -440,6 +458,8 @@
         let currentHike = null;
         let allContacts = [];
         const APP_VERSION = document.querySelector('meta[name="app-version"]').content;
+        const APP_COMMIT_SHA = document.querySelector('meta[name="app-commit-sha"]').content;
+
 
         // --- LÓGICA DE LA INTERFAZ (UI) ---
 
@@ -478,6 +498,27 @@
         // Formulario de Caminata
         const hikeForm = document.getElementById('hike-form');
         const hikeIdInput = document.getElementById('hike-id');
+        const hikePriceInput = document.getElementById('hike-price');
+        const hikeExchangeRateInput = document.getElementById('hike-exchange-rate');
+        const hikeCurrencySelect = document.getElementById('hike-currency');
+        const hikeTotalConvertedInput = document.getElementById('hike-total-converted');
+
+        function calculateTotal() {
+            const price = parseFloat(hikePriceInput.value) || 0;
+            const rate = parseFloat(hikeExchangeRateInput.value) || 0;
+            const currency = hikeCurrencySelect.value;
+            
+            if (currency === '$' && price > 0 && rate > 0) {
+                const total = price * rate;
+                hikeTotalConvertedInput.value = `¢${total.toLocaleString('es-CR')}`;
+            } else {
+                hikeTotalConvertedInput.value = '';
+            }
+        }
+
+        [hikePriceInput, hikeExchangeRateInput, hikeCurrencySelect].forEach(el => {
+            el.addEventListener('input', calculateTotal);
+        });
         
         function getHikeDataFromForm() {
             return {
@@ -486,7 +527,9 @@
                 fecha: document.getElementById('hike-date').value,
                 fechaDesde: document.getElementById('hike-date-from').value,
                 fechaHasta: document.getElementById('hike-date-to').value,
+                moneda: document.getElementById('hike-currency').value,
                 precio: document.getElementById('hike-price').value,
+                tipoCambio: document.getElementById('hike-exchange-rate').value,
                 distancia: document.getElementById('hike-distance').value,
                 capacidad: document.getElementById('hike-capacity').value,
                 dificultad: document.getElementById('hike-difficulty').value,
@@ -502,11 +545,14 @@
             document.getElementById('hike-date').value = hike.fecha || '';
             document.getElementById('hike-date-from').value = hike.fechaDesde || '';
             document.getElementById('hike-date-to').value = hike.fechaHasta || '';
+            document.getElementById('hike-currency').value = hike.moneda || '¢';
             document.getElementById('hike-price').value = hike.precio || '';
+            document.getElementById('hike-exchange-rate').value = hike.tipoCambio || '';
             document.getElementById('hike-distance').value = hike.distancia || '';
             document.getElementById('hike-capacity').value = hike.capacidad || '';
             document.getElementById('hike-difficulty').value = hike.dificultad || '';
             document.getElementById('hike-reservation').value = hike.reservaCon || '';
+            calculateTotal();
             renderParticipantList();
         }
 
@@ -514,6 +560,7 @@
             currentHike = { participants: [] };
             hikeForm.reset();
             hikeIdInput.value = '';
+            calculateTotal();
             renderParticipantList();
         }
 
@@ -573,7 +620,7 @@
             const name = participantNameInput.value.trim();
             if (name && currentHike) {
                 if (!currentHike.participants) currentHike.participants = [];
-                currentHike.participants.push({ id: Date.now(), name: name, status: 'Pendiente' });
+                currentHike.participants.push({ id: Date.now(), name: name, status: 'Pendiente', abonos: '' });
                 renderParticipantList();
                 participantNameInput.value = '';
                 saveHikeLogic(false);
@@ -586,6 +633,17 @@
             currentHike.participants.forEach((p, index) => {
                 const li = document.createElement('li');
                 li.className = 'participant-item';
+                
+                let abonosSelectHTML = '';
+                if (p.status === 'Reservado') {
+                    let options = '<option value="">Seleccionar abono...</option>';
+                    for (let i = 1; i <= 30; i++) {
+                        const text = `Faltan ${i} Abono${i > 1 ? 's' : ''}`;
+                        options += `<option value="${text}" ${p.abonos === text ? 'selected' : ''}>${text}</option>`;
+                    }
+                    abonosSelectHTML = `<select class="abonos-select" data-id="${p.id}">${options}</select>`;
+                }
+
                 li.innerHTML = `
                     <div class="status-indicator status-${p.status.toLowerCase()}"></div>
                     <span class="consecutive">${index + 1}.</span>
@@ -595,6 +653,7 @@
                         <option value="Reservado" ${p.status === 'Reservado' ? 'selected' : ''}>Reservado</option>
                         <option value="Cancelado" ${p.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
                     </select>
+                    ${abonosSelectHTML}
                     <button class="btn-danger delete-participant-btn" data-id="${p.id}">Borrar</button>
                 `;
                 participantList.appendChild(li);
@@ -613,14 +672,24 @@
         });
 
         participantList.addEventListener('change', (e) => {
-            if (e.target.classList.contains('status-select')) {
-                const participantId = Number(e.target.dataset.id);
-                const newStatus = e.target.value;
-                const participant = currentHike.participants.find(p => p.id === participantId);
-                if (participant) participant.status = newStatus;
-                renderParticipantList();
-                saveHikeLogic(false);
+            const target = e.target;
+            const participantId = Number(target.dataset.id);
+            const participant = currentHike.participants.find(p => p.id === participantId);
+            if (!participant) return;
+
+            if (target.classList.contains('status-select')) {
+                participant.status = target.value;
+                if (participant.status !== 'Reservado') {
+                    participant.abonos = ''; // Limpiar abonos si el estado no es reservado
+                }
+                renderParticipantList(); // Re-render para mostrar/ocultar el select de abonos
             }
+            
+            if (target.classList.contains('abonos-select')) {
+                participant.abonos = target.value;
+            }
+
+            saveHikeLogic(false);
         });
 
         // Autocomplete
@@ -807,28 +876,40 @@
                 return;
             }
             let message = `*${hikeToExport.nombre}*\n\n`;
+            
+            const precioLabel = `Precio: ${hikeToExport.moneda}${hikeToExport.precio}`;
+            const tipoCambioLabel = hikeToExport.moneda === '$' && hikeToExport.tipoCambio ? ` (TC: ${hikeToExport.tipoCambio} -> ${hikeTotalConvertedInput.value})` : '';
+
             const fields = [
                 { label: 'Fecha', value: hikeToExport.fecha },
                 { label: 'Desde', value: hikeToExport.fechaDesde },
                 { label: 'Hasta', value: hikeToExport.fechaHasta },
-                { label: 'Precio', value: hikeToExport.precio, prefix: '¢' },
+                { label: 'Precio', value: `${hikeToExport.moneda}${hikeToExport.precio}${tipoCambioLabel}`},
                 { label: 'Distancia', value: hikeToExport.distancia, suffix: ' km' },
                 { label: 'Capacidad', value: hikeToExport.capacidad },
                 { label: 'Dificultad', value: hikeToExport.dificultad },
                 { label: 'Reserva con', value: hikeToExport.reservaCon, prefix: '¢' },
             ];
             fields.forEach(field => {
-                if (field.value && field.value !== '0' && field.value !== 'N/A') {
-                    message += `*${field.label}:* ${field.prefix || ''}${field.value}${field.suffix || ''}\n`;
+                if (field.value && field.value !== '0' && field.value !== 'N/A' && !field.value.startsWith('$null') && !field.value.startsWith('¢null')) {
+                    if (field.label === 'Precio') {
+                         message += `*${field.label}:* ${field.value}\n`;
+                    } else {
+                        message += `*${field.label}:* ${field.prefix || ''}${field.value}${field.suffix || ''}\n`;
+                    }
                 }
             });
             if (hikeToExport.participants && hikeToExport.participants.length > 0) {
                 message += '\n*Lista de Interesados:*\n';
                 hikeToExport.participants.forEach((p, index) => {
                     let statusEmoji = '';
+                    if (p.status === 'Pendiente') statusEmoji = '🔴 ';
                     if (p.status === 'Reservado') statusEmoji = '🟡 ';
                     if (p.status === 'Cancelado') statusEmoji = '🟢 ';
-                    message += `${index + 1}. ${statusEmoji}${p.name} - ${p.status}\n`;
+                    
+                    const abonosText = (p.status === 'Pendiente' || p.status === 'Reservado') && p.abonos ? ` - *${p.abonos}*` : '';
+
+                    message += `${index + 1}. ${statusEmoji}${p.name} - ${p.status}${abonosText}\n`;
                 });
             }
             const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
@@ -916,22 +997,72 @@
         
         // SISTEMA DE ACTUALIZACIÓN
         document.getElementById('app-version-display').textContent = `Versión: ${APP_VERSION}`;
+        
+        async function checkForUpdates() {
+            try {
+                // Usamos la API de GitHub para obtener la info del último commit del archivo
+                // Asumimos que el archivo se llama 'listas.html' en el repositorio
+                const repoUrl = 'https://api.github.com/repos/kerm1977/Miniapps/commits?path=listas.html&page=1&per_page=1';
+                
+                const response = await fetch(repoUrl);
+                if (!response.ok) {
+                    console.error('No se pudo verificar la versión desde GitHub.');
+                    return;
+                }
+                
+                const data = await response.json();
+                if (!data || data.length === 0) {
+                    console.error('No se encontraron commits para el archivo especificado.');
+                    return;
+                }
+
+                const latestCommit = data[0];
+                const remoteCommitSha = latestCommit.sha;
+                const commitMessage = latestCommit.commit.message;
+
+                if (remoteCommitSha !== APP_COMMIT_SHA) {
+                    const message = `
+                        <p>¡Hay una nueva versión disponible!</p>
+                        <p style="margin-top: 1rem; font-weight: bold;">Último cambio:</p>
+                        <p style="background-color: var(--color-fondo); padding: 10px; border-radius: 8px; margin-top: 0.5rem;">
+                            <em>${commitMessage}</em>
+                        </p>
+                        <p style="margin-top: 1rem;">Se recomienda hacer un respaldo antes de actualizar.</p>
+                    `;
+                    showConfirmationModal(
+                        'Actualización Disponible',
+                        message,
+                        () => {
+                            location.reload(true); // El 'true' fuerza la recarga desde el servidor
+                        },
+                        { mode: 'info' }
+                    );
+                    document.getElementById('modal-confirm-btn').textContent = 'Recargar y Actualizar';
+                } else {
+                    alert('¡Felicitaciones! Ya tienes la última versión.');
+                }
+
+            } catch (error) {
+                console.error('Error al verificar actualizaciones:', error);
+                alert('No se pudo conectar para verificar si hay actualizaciones. Revisa tu conexión a internet.');
+            }
+        }
+
         document.getElementById('update-app-btn').addEventListener('click', () => {
-            const message = `
-                <p>Esta aplicación no se puede actualizar automáticamente porque es un archivo local.</p>
-                <p style="margin-top: 1rem;"><strong>Para usar una nueva versión:</strong></p>
-                <ol style="text-align: left; margin: 1rem auto; max-width: 90%; padding-left: 2rem;">
-                    <li><strong>Descarga</strong> el nuevo archivo <code>.html</code>.</li>
-                    <li><strong>Ábrelo</strong> en tu navegador.</li>
-                </ol>
-                <p>Tus datos (caminatas y contactos) se mantendrán seguros en el navegador.</p>
-            `;
-            showConfirmationModal(
-                'Instrucciones de Actualización',
-                message,
-                () => {}, // No action needed on close
-                { mode: 'info' }
-            );
+             if (window.location.protocol === 'file:') {
+                const message = `
+                    <p>Esta aplicación se está ejecutando como un archivo local y no puede actualizarse automáticamente.</p>
+                    <p style="margin-top: 1rem;"><strong>Para usar una nueva versión:</strong></p>
+                    <ol style="text-align: left; margin: 1rem auto; max-width: 90%; padding-left: 2rem;">
+                        <li>Visita el repositorio en GitHub.</li>
+                        <li><strong>Descarga</strong> el nuevo archivo <code>.html</code>.</li>
+                        <li><strong>Ábrelo</strong> en tu navegador.</li>
+                    </ol>
+                `;
+                showConfirmationModal('Instrucciones de Actualización', message, () => {}, { mode: 'info' });
+             } else {
+                checkForUpdates();
+             }
         });
 
         // LÓGICA DE INICIO DE LA APLICACIÓN
@@ -944,6 +1075,12 @@
         async function main() {
             loadTheme();
             await initializeDB();
+            
+            if (window.location.protocol !== 'file:') {
+                // Descomentar para activar la verificación automática al iniciar
+                // await checkForUpdates();
+            }
+
             const contactsInDB = await storage.getAll('contacts');
             if (contactsInDB.length === 0) {
                 const importCard = document.getElementById('initial-import-card');
