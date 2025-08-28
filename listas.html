@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- ID de Versión de la App -->
-    <meta name="app-version" content="2.8.8">
+    <meta name="app-version" content="2.9.1">
     <!-- El SHA del commit de esta versión. Debe actualizarse manualmente en cada subida. -->
     <meta name="app-commit-sha" content="INICIAL">
-    <title>Gestor de Listas de Caminatas v2.8</title>
+    <title>Gestor de Listas de Caminatas v2.9</title>
     <style>
         /* Estilos Generales y Variables de Tema */
         :root {
@@ -70,17 +70,7 @@
             justify-content: center; align-items: center;
         }
         .icon-btn svg { width: 100%; height: 100%; fill: var(--color-texto); }
-
-        /* Botón Flotante de WhatsApp */
-        #whatsapp-export-btn {
-            position: fixed; bottom: 75px; right: 25px; width: 60px; height: 60px;
-            border-radius: 50%; background-color: #25D366; color: white;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 100; border: none; padding: 0; transition: transform 0.2s ease-out;
-        }
-        #whatsapp-export-btn:hover { transform: scale(1.1); }
-
+        
         /* Lista de Participantes */
         #participant-list { list-style: none; }
         .participant-item { display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid var(--color-secundario); flex-wrap: wrap; }
@@ -127,7 +117,14 @@
         .btn-action-icon svg { width: 18px; height: 18px; fill: currentColor; }
         .btn-delete-hike { background-color: var(--color-error); color: white; border: none; }
 
-    
+        #add-participant-form { align-items: flex-end; }
+        #add-participant-btn { 
+            width: 44px; height: 44px; border-radius: 50%; 
+            background-color: var(--color-exito); color: white; 
+            display: flex; justify-content: center; align-items: center;
+            padding: 0; font-size: 1.5rem; text-transform: none;
+        }
+
         /* Página de Configuración */
         #settings-view .card { box-shadow: none; border: none; }
         #backup-countdown {
@@ -280,17 +277,21 @@
                 </div>
                 <div id="tab-participants" class="tab-content active">
                     <h3>Agregar Caminante</h3>
-                    <form id="add-participant-form" class="form-grid" style="grid-template-columns: 1fr auto;">
+                    <form id="add-participant-form" class="form-grid">
                         <div class="form-group autocomplete">
                             <label for="participant-name">Buscar o escribir nombre</label>
                             <input type="text" id="participant-name" class="title-case-input" placeholder="Empieza a escribir un nombre...">
                         </div>
-                        <div class="form-group" style="justify-content: flex-end;">
-                            <button type="submit" class="btn">Agregar</button>
+                        <div class="form-group">
+                            <button type="submit" id="add-participant-btn">+</button>
                         </div>
                     </form>
                     <h3 style="margin-top: 2rem;">Lista de Participantes</h3>
                     <ul id="participant-list"></ul>
+                    <hr style="border: 1px solid var(--color-secundario); margin: 1.5rem 0 1rem;">
+                    <div class="button-group" style="justify-content: flex-end;">
+                        <button id="whatsapp-export-btn" class="btn-secondary">Enviar Lista por Whatsapp</button>
+                    </div>
                 </div>
                 <div id="tab-new-contact" class="tab-content">
                     <h3>Formulario de Nuevo Contacto</h3>
@@ -377,13 +378,6 @@
         </div>
 
     </div>
-
-    <!-- Botón Flotante de WhatsApp -->
-    <button id="whatsapp-export-btn" title="Exportar a WhatsApp">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-whatsapp" viewBox="0 0 16 16">
-            <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
-        </svg>
-    </button>
 
     <!-- Modal de Confirmación -->
     <div id="confirmation-modal" class="modal-overlay">
@@ -978,73 +972,13 @@
             reader.readAsText(file);
         }
         
-        // Exportar a WhatsApp
-        document.getElementById('whatsapp-export-btn').addEventListener('click', () => {
-            if (!currentHike) {
-                alert('Primero debes seleccionar o crear una caminata.');
-                return;
-            }
-            const hikeToExport = getHikeDataFromForm();
-            if (!hikeToExport.nombre) {
-                alert('No hay información de caminata para exportar. Asegúrate de que tenga un nombre.');
-                return;
-            }
-            let message = `*${hikeToExport.nombre}*\n\n`;
-            
-            const precioLabel = `Precio: ${hikeToExport.moneda}${hikeToExport.precio}`;
-            const tipoCambioLabel = hikeToExport.moneda === '$' && hikeToExport.tipoCambio ? ` (TC: ${hikeToExport.tipoCambio} -> ${hikeTotalConvertedInput.value})` : '';
-
-            const fields = [
-                { label: 'Fecha', value: hikeToExport.fecha },
-                { label: 'Salida', value: hikeToExport.salidaDesde },
-                { label: 'Hora Salida', value: hikeToExport.horaSalida },
-                { label: 'Inicio Caminata', value: hikeToExport.horaInicio },
-                { label: 'Precio', value: `${hikeToExport.moneda}${hikeToExport.precio}${tipoCambioLabel}`},
-                { label: 'Distancia', value: hikeToExport.distancia, suffix: ' km' },
-                { label: 'Capacidad', value: hikeToExport.capacidad },
-                { label: 'Dificultad', value: hikeToExport.dificultad },
-                { label: 'Reserva con', value: hikeToExport.reservaCon, prefix: '¢' },
-            ];
-            fields.forEach(field => {
-                const fieldValue = field.value || '';
-                if (fieldValue && fieldValue !== '0' && fieldValue !== 'N/A' && !fieldValue.startsWith('$null') && !fieldValue.startsWith('¢null')) {
-                    if (field.label === 'Precio') {
-                         message += `*${field.label}:* ${fieldValue}\n`;
-                    } else {
-                        message += `*${field.label}:* ${field.prefix || ''}${fieldValue}${field.suffix || ''}\n`;
-                    }
-                }
-            });
-
-            if (hikeToExport.puntosRecogida) {
-                const puntos = hikeToExport.puntosRecogida.split('\n').filter(p => p.trim() !== '').map((p, i) => `${i + 1}. ${p.trim()}`).join('\n');
-                if (puntos) {
-                    message += `\n*Se Recoge En:*\n${puntos}\n`;
-                }
-            }
-
-            if (hikeToExport.participants && hikeToExport.participants.length > 0) {
-                message += '\n*Lista de Interesados:*\n';
-                hikeToExport.participants.forEach((p, index) => {
-                    let statusEmoji = '';
-                    if (p.status === 'Pendiente') statusEmoji = '🔴 ';
-                    if (p.status === 'Reservado') statusEmoji = '🟡 ';
-                    if (p.status === 'Cancelado') statusEmoji = '🟢 ';
-                    
-                    const abonosText = p.status === 'Reservado' && p.abonos ? ` - *${p.abonos}*` : '';
-
-                    message += `${index + 1}. ${statusEmoji}${p.name} - ${p.status}${abonosText}\n`;
-                });
-            }
-            const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-            window.open(whatsappUrl, '_blank');
-        });
-
         // VALIDACIÓN Y FORMATEO DE INPUTS
         function toTitleCase(str) {
             if (!str) return '';
-            return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+            // Maneja guiones y espacios
+            return str.toLowerCase().replace(/([-\s]|^)(\w)/g, (match, separator, char) => separator + char.toUpperCase());
         }
+
         document.body.addEventListener('input', (e) => {
             const target = e.target;
             if (target.classList.contains('uppercase-input')) {
@@ -1264,6 +1198,67 @@
             message += formatTextSection("Normas Generales", document.getElementById('instruction-rules').value);
             message += formatTextSection("Otras Indicaciones Generales", document.getElementById('instruction-general-info').value);
 
+            const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        });
+        
+        document.getElementById('whatsapp-export-btn').addEventListener('click', () => {
+            if (!currentHike) {
+                alert('Primero debes seleccionar o crear una caminata.');
+                return;
+            }
+            const hikeToExport = getHikeDataFromForm();
+            if (!hikeToExport.nombre) {
+                alert('No hay información de caminata para exportar. Asegúrate de que tenga un nombre.');
+                return;
+            }
+            let message = `*${hikeToExport.nombre}*\n\n`;
+            
+            const precioLabel = `Precio: ${hikeToExport.moneda}${hikeToExport.precio}`;
+            const tipoCambioLabel = hikeToExport.moneda === '$' && hikeToExport.tipoCambio ? ` (TC: ${hikeToExport.tipoCambio} -> ${hikeTotalConvertedInput.value})` : '';
+
+            const fields = [
+                { label: 'Fecha', value: hikeToExport.fecha },
+                { label: 'Salida', value: hikeToExport.salidaDesde },
+                { label: 'Hora Salida', value: hikeToExport.horaSalida },
+                { label: 'Inicio Caminata', value: hikeToExport.horaInicio },
+                { label: 'Precio', value: `${hikeToExport.moneda}${hikeToExport.precio}${tipoCambioLabel}`},
+                { label: 'Distancia', value: hikeToExport.distancia, suffix: ' km' },
+                { label: 'Capacidad', value: hikeToExport.capacidad },
+                { label: 'Dificultad', value: hikeToExport.dificultad },
+                { label: 'Reserva con', value: hikeToExport.reservaCon, prefix: '¢' },
+            ];
+            fields.forEach(field => {
+                const fieldValue = field.value || '';
+                if (fieldValue && fieldValue !== '0' && fieldValue !== 'N/A' && !fieldValue.startsWith('$null') && !fieldValue.startsWith('¢null')) {
+                    if (field.label === 'Precio') {
+                         message += `*${field.label}:* ${fieldValue}\n`;
+                    } else {
+                        message += `*${field.label}:* ${field.prefix || ''}${fieldValue}${field.suffix || ''}\n`;
+                    }
+                }
+            });
+
+            if (hikeToExport.puntosRecogida) {
+                const puntos = hikeToExport.puntosRecogida.split('\n').filter(p => p.trim() !== '').map((p, i) => `${i + 1}. ${p.trim()}`).join('\n');
+                if (puntos) {
+                    message += `\n*Se Recoge En:*\n${puntos}\n`;
+                }
+            }
+
+            if (hikeToExport.participants && hikeToExport.participants.length > 0) {
+                message += '\n*Lista de Interesados:*\n';
+                hikeToExport.participants.forEach((p, index) => {
+                    let statusEmoji = '';
+                    if (p.status === 'Pendiente') statusEmoji = '🔴 ';
+                    if (p.status === 'Reservado') statusEmoji = '🟡 ';
+                    if (p.status === 'Cancelado') statusEmoji = '🟢 ';
+                    
+                    const abonosText = p.status === 'Reservado' && p.abonos ? ` - *${p.abonos}*` : '';
+
+                    message += `${index + 1}. ${statusEmoji}${p.name} - ${p.status}${abonosText}\n`;
+                });
+            }
             const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
             window.open(whatsappUrl, '_blank');
         });

@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparador de Análisis de Sangre (CCSS)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .result-cell {
+            font-weight: 600;
+            text-align: center;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        .normal { background-color: #22c55e; } /* green-500 */
+        .bajo { background-color: #f97316; } /* orange-500 */
+        .alto { background-color: #ef4444; } /* red-500 */
+        .indeterminado { background-color: #6b7280; } /* gray-500 */
+
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #3b82f6; /* blue-500 */
+        }
+        
+        /* --- LÓGICA CSS REFORZADA Y DEFINITIVA --- */
+        /* 1. Por defecto, TODAS las filas de detalles están forzadas a estar ocultas */
+        .details-row {
+            display: none !important;
+        }
+        /* 2. ÚNICA Y EXCLUSIVAMENTE cuando la fila anterior tiene la clase 'is-abnormal', se muestra */
+        tr.is-abnormal + .details-row {
+            display: table-row !important;
+        }
+
+        .details-content {
+            background-color: #f9fafb; /* gray-50 */
+            padding: 1rem;
+            border-left: 4px solid #3b82f6; /* blue-500 */
+        }
+        .details-content h4 {
+            font-weight: 600;
+            color: #1f2937; /* gray-800 */
+            margin-bottom: 0.5rem;
+        }
+        .disclaimer {
+            background-color: #fef2f2; /* red-50 */
+            color: #b91c1c; /* red-700 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1.5rem;
+            text-align: center;
+            font-weight: 500;
+        }
+        .treatment-list ul {
+            list-style-position: inside;
+            padding-left: 0.5rem;
+        }
+        .treatment-list li {
+            margin-bottom: 0.75rem;
+        }
+        .warning-text {
+            font-size: 0.75rem; /* text-xs */
+            color: #dc2626; /* red-600 */
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        .critical-warning {
+            display: none;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #b91c1c; /* red-700 */
+            animation: blink 1.5s linear infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0.4; }
+        }
+        
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        input[readonly] {
+            background-color: #f3f4f6; /* gray-200 */
+            cursor: not-allowed;
+        }
+
+        /* --- ESTILOS RESPONSIVOS MEJORADOS --- */
+        @media (max-width: 767px) {
+            .responsive-table thead { display: none; }
+            .responsive-table tbody, .responsive-table tr { 
+                display: block; 
+            }
+            .responsive-table tr:not(.details-row) {
+                background-color: white;
+                border-radius: 0.75rem; /* 12px */
+                box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+                margin-bottom: 1.5rem; /* 24px */
+                overflow: hidden;
+            }
+             .responsive-table tr.header-row {
+                display: none;
+            }
+            .responsive-table td { 
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.75rem 1rem; /* 12px 16px */
+                border-bottom: 1px solid #f3f4f6; /* gray-100 */
+                text-align: right;
+            }
+            .responsive-table tr:not(.details-row) td:last-child {
+                border-bottom: none;
+            }
+            .responsive-table td::before { 
+                content: attr(data-label); 
+                font-weight: 600; 
+                color: #374151; /* gray-700 */
+                text-align: left;
+                margin-right: 1rem; /* 16px */
+                flex-shrink: 0;
+                width: 45%;
+            }
+            .responsive-table td .result-cell {
+                min-width: 80px;
+            }
+            .responsive-table td input[type="number"] {
+                max-width: 120px;
+                text-align: right;
+            }
+            .responsive-table .details-row {
+                margin-bottom: 1.5rem;
+                border-radius: 0 0 0.75rem 0.75rem;
+                overflow: hidden;
+                box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            }
+            .responsive-table .details-row td {
+                display: block;
+                border-bottom: none;
+            }
+            .responsive-table .details-row td::before {
+                display: none;
+            }
+             .details-content {
+                border-left: none;
+                border-top: 4px solid #3b82f6;
+            }
+            /* 3. Regla específica para móvil para que se muestre como un bloque */
+            tr.is-abnormal + .details-row {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 p-4 sm:p-6 md:p-8">
+
+    <div id="capture-area" class="max-w-5xl mx-auto bg-white p-4 sm:p-6 rounded-xl shadow-lg">
+        <header class="text-center mb-8">
+            <h1 class="text-2xl sm:text-3xl font-bold text-blue-600">Comparador de Análisis de Sangre</h1>
+            <p class="text-gray-500 mt-2">Ingresa tus resultados y compáralos con los rangos de referencia.</p>
+        </header>
+
+        <main>
+            <!-- Sección de Hematología -->
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-700 border-b-2 border-blue-500 pb-2 mb-4">Hematología (Hemograma)</h2>
+                <table class="w-full text-sm text-left text-gray-500 responsive-table">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Parámetro</th>
+                            <th scope="col" class="px-6 py-3">Rango Normal</th>
+                            <th scope="col" class="px-6 py-3">Tu Valor</th>
+                            <th scope="col" class="px-6 py-3 text-center">Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="bg-white border-b header-row"><td colspan="4" class="px-6 py-2 font-semibold bg-gray-100">Serie Roja</td></tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Glóbulos Rojos (millones/µL)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">H: 4.5 - 5.9 | M: 4.0 - 5.2</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="0.01" class="w-full p-2 border rounded-md" data-param-id="globulos_rojos" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                            <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Bajo:</b> Anemia, deficiencias de hierro/B12/folato, sangrados. <b>Alto:</b> Deshidratación, tabaquismo, altitudes elevadas.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Consulta a tu médico antes de iniciar cualquier tratamiento natural.</p><ul><li><b>Dieta Rica en Hierro (para valores bajos):</b><br><u>Forma de tomar:</u> Integrar en la dieta espinacas, lentejas y carnes rojas magras. Consumir junto a alimentos con vitamina C (naranja, kiwi) para potenciar la absorción.<br><u>Efectos Secundarios:</u> Generalmente seguro. El exceso de suplementos de hierro (no la comida) puede causar estreñimiento.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Estos tratamientos deben ser recetados y supervisados por un profesional médico.</p><ul><li><b>Suplementos de Hierro (Sulfato Ferroso):</b><br><u>Forma de tomar:</u> Pastillas orales, según prescripción.<br><u>Efectos Secundarios:</u> Malestar estomacal, náuseas, estreñimiento, heces oscuras.</li></ul></div></div></td>
+                        </tr>
+
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Hemoglobina (g/dL)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">H: 13.5 - 17.5 | M: 12.0 - 15.5</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="0.1" class="w-full p-2 border rounded-md" data-param-id="hemoglobina" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Bajo:</b> Principal indicador de anemia. <b>Alto:</b> Común en fumadores, deshidratación, enfermedades pulmonares.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Consulta a tu médico.</p><ul><li><b>Alimentos Ricos en Folato y B12 (para valores bajos):</b><br><u>Forma de tomar:</u> Incluir vegetales de hoja verde oscuro, legumbres, pescado y huevos.<br><u>Efectos Secundarios:</u> Raro tener efectos adversos por comida.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión médica requerida.</p><ul><li><b>Suplementos de Ácido Fólico:</b><br><u>Forma de tomar:</u> Pastillas orales diarias si la causa es deficiencia de folato.<br><u>Efectos Secundarios:</u> Generalmente bien tolerado.</li><li><b>Transfusión de Sangre:</b><br><u>Forma de tomar:</u> Procedimiento hospitalario para casos de anemia muy severa.<br><u>Efectos Secundarios:</u> Reacciones febriles, alérgicas.</li></ul></div></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Hematocrito (%)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">H: 41 - 50 | M: 36 - 45</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="0.1" class="w-full p-2 border rounded-md" data-param-id="hematocrito" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Bajo:</b> Anemia, sobrehidratación. <b>Alto:</b> Deshidratación severa, tabaquismo.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Consulta a tu médico.</p><ul><li><b>Hidratación:</b><br><u>Forma de tomar:</u> Beber suficiente agua durante el día.<br><u>Efectos Secundarios:</u> Ninguno.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión médica requerida.</p><ul><li><b>Fluidoterapia:</b><br><u>Forma de tomar:</u> Administración de fluidos intravenosos en un entorno médico.<br><u>Efectos Secundarios:</u> Riesgo de sobrecarga de líquidos.</li></ul></div></div></td>
+                        </tr>
+
+                        <tr class="bg-white border-b header-row"><td colspan="4" class="px-6 py-2 font-semibold bg-gray-100">Índices Eritrocitarios (Calculado)</td></tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">VCM (fL)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">80 - 100</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="1" class="w-full p-2 border rounded-md" data-param-id="vcm" readonly></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Bajo:</b> Anemia por deficiencia de hierro. <b>Alto:</b> Anemia por deficiencia de B12 o folato.</p><h4 class="mt-4">Recomendaciones</h4><p>El tratamiento se enfoca en corregir la deficiencia nutricional subyacente (hierro, B12 o folato) como se detalla en otros parámetros.</p></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">HCM (pg)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">27 - 34</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="1" class="w-full p-2 border rounded-md" data-param-id="hcm" readonly></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Bajo:</b> Anemia por deficiencia de hierro. <b>Alto:</b> Anemia por deficiencia de B12 o folato.</p><h4 class="mt-4">Recomendaciones</h4><p>Similar al VCM, se debe tratar la causa nutricional de base.</p></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">CHCM (g/dL)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">32 - 36</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="0.1" class="w-full p-2 border rounded-md" data-param-id="chcm" readonly></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Bajo:</b> Anemia por deficiencia de hierro. <b>Alto:</b> Raro, puede indicar esferocitosis hereditaria.</p><h4 class="mt-4">Recomendaciones</h4><p>El tratamiento se enfoca en la causa subyacente, principalmente la deficiencia de hierro.</p></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">RDW (%)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">11.5 - 14.5</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="0.1" class="w-full p-2 border rounded-md" data-param-id="rdw" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Indica una gran variabilidad en el tamaño de los glóbulos rojos, común en anemias por deficiencia de hierro o B12.</p><h4 class="mt-4">Recomendaciones</h4><p>No se trata directamente; es un indicador que ayuda al médico a diagnosticar el tipo de anemia.</p></div></td>
+                        </tr>
+                        
+                        <tr class="bg-white border-b header-row"><td colspan="4" class="px-6 py-2 font-semibold bg-gray-100">Serie Blanca (Leucocitos)</td></tr>
+                         <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Glóbulos Blancos (miles/µL)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">4.5 - 11.0</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="0.1" class="w-full p-2 border rounded-md" data-param-id="globulos_blancos" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Bajo:</b> Supresión del sistema inmune, infecciones virales. <b>Alto:</b> Señal de infección bacteriana/viral o inflamación.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Consulta a tu médico.</p><ul><li><b>Dieta Inmunoestimulante:</b><br><u>Forma de tomar:</u> Consumir alimentos ricos en Vitamina C, Zinc y antioxidantes.<br><u>Efectos Secundarios:</u> Seguro a través de la dieta.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión médica requerida.</p><ul><li><b>Antibióticos/Antivirales:</b><br><u>Forma de tomar:</u> Medicamento específico para la infección causante.<br><u>Efectos Secundarios:</u> Varían según el fármaco.</li></ul></div></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Neutrófilos (%)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">40 - 75</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="1" class="w-full p-2 border rounded-md" data-param-id="neutrofilos" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Bajo:</b> Infección grave (sepsis), quimioterapia, enfermedades autoinmunes. <b>Alto:</b> Infección bacteriana aguda, inflamación, estrés físico.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Las alteraciones significativas requieren manejo médico.</p><ul><li><b>Vitamina C y Zinc:</b><br><u>Forma de tomar:</u> Apoyan la función inmune general, a través de la dieta.<br><u>Efectos Secundarios:</u> Seguro.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión médica requerida.</p><ul><li><b>Antibióticos:</b><br><u>Forma de tomar:</u> Si la causa es una infección bacteriana.<br><u>Efectos Secundarios:</u> Malestar gastrointestinal.</li></ul></div></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Linfocitos (%)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">20 - 45</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="1" class="w-full p-2 border rounded-md" data-param-id="linfocitos" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Bajo:</b> Enfermedades autoinmunes, uso de esteroides, infecciones agudas. <b>Alto:</b> Infecciones virales (gripe, mononucleosis), algunas leucemias.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Consulta a tu médico.</p><ul><li><b>Descanso y Hidratación:</b><br><u>Forma de tomar:</u> Fundamental para recuperarse de infecciones virales.<br><u>Efectos Secundarios:</u> Ninguno.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión médica requerida.</p><ul><li><b>Antivirales o tratamiento sintomático:</b><br><u>Forma de tomar:</u> Dependiendo del virus causante.<br><u>Efectos Secundarios:</u> Varían.</li></ul></div></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Monocitos (%)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">2 - 10</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="1" class="w-full p-2 border rounded-md" data-param-id="monocitos" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Infecciones crónicas (como tuberculosis), enfermedades autoinmunes, recuperación de una infección.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: El tratamiento se enfoca en la causa subyacente.</p><ul><li><b>Dieta Antiinflamatoria:</b><br><u>Forma de tomar:</u> Consumir cúrcuma, jengibre, y alimentos ricos en Omega-3.<br><u>Efectos Secundarios:</u> Seguro.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión médica requerida.</p><ul><li><b>Tratamiento Específico:</b><br><u>Forma de tomar:</u> Se trata la enfermedad de base (ej. antibióticos para tuberculosis).<br><u>Efectos Secundarios:</u> Varían.</li></ul></div></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Eosinófilos (%)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">1 - 6</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="1" class="w-full p-2 border rounded-md" data-param-id="eosinofilos" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Alergias, asma, infecciones parasitarias, reacciones a medicamentos.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Consulta a tu médico.</p><ul><li><b>Quercetina:</b><br><u>Forma de tomar:</u> Un flavonoide presente en manzanas y cebollas, actúa como antihistamínico natural.<br><u>Efectos Secundarios:</u> Seguro en la dieta.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión médica requerida.</p><ul><li><b>Antihistamínicos (ej. Loratadina):</b><br><u>Forma de tomar:</u> Pastillas orales para controlar reacciones alérgicas.<br><u>Efectos Secundarios:</u> Somnolencia (en algunos tipos).</li></ul></div></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Basófilos (%)</td>
+                            <td data-label="Rango Normal" class="px-6 py-4">0 - 2</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="1" class="w-full p-2 border rounded-md" data-param-id="basofilos" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                             <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Reacciones alérgicas, inflamación crónica, hipotiroidismo, algunas leucemias.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: El tratamiento se enfoca en la causa subyacente.</p><ul><li><b>Control de Alérgenos:</b><br><u>Forma de tomar:</u> Identificar y evitar los desencadenantes de alergias.<br><u>Efectos Secundarios:</u> Ninguno.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión médica requerida.</p><ul><li><b>Tratamiento de la Causa:</b><br><u>Forma de tomar:</u> El enfoque es tratar la condición subyacente (ej. hormona tiroidea para hipotiroidismo).<br><u>Efectos Secundarios:</u> Varían.</li></ul></div></div></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section class="mb-8 border-2 border-red-400 rounded-lg p-4 bg-red-50">
+                <h2 class="text-2xl font-semibold text-red-700 border-b-2 border-red-400 pb-2 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    Atención: Salud Cardiovascular
+                </h2>
+                <table class="w-full text-sm text-left text-gray-500 responsive-table">
+                     <thead class="text-xs text-gray-700 uppercase bg-red-100">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Parámetro</th>
+                            <th scope="col" class="px-6 py-3">Rango Óptimo</th>
+                            <th scope="col" class="px-6 py-3">Tu Valor</th>
+                            <th scope="col" class="px-6 py-3 text-center">Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Colesterol Total (mg/dL)</td>
+                            <td data-label="Rango Óptimo" class="px-6 py-4">&lt; 200</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" class="w-full p-2 border rounded-md" data-param-id="colesterol_total" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div></td>
+                        </tr>
+                        <tr class="details-row">
+                            <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Dieta, genética, sedentarismo.</p><h4 class="mt-4">Recomendaciones</h4><p>El tratamiento se enfoca en bajar el Colesterol LDL y los Triglicéridos.</p></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Colesterol HDL (mg/dL)</td>
+                            <td data-label="Rango Óptimo" class="px-6 py-4">&gt; 40 (H) / &gt; 50 (M)</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" class="w-full p-2 border rounded-md" data-param-id="colesterol_hdl" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div></td>
+                        </tr>
+                        <tr class="details-row">
+                            <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Bajo:</b> Tabaquismo, sedentarismo, dieta pobre.</p><h4 class="mt-4">Recomendaciones</h4><p>Ejercicio aeróbico, consumo de aceite de oliva y pescado graso.</p></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Colesterol No-HDL (Calculado)</td>
+                            <td data-label="Rango Óptimo" class="px-6 py-4">&lt; 130</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" class="w-full p-2 border rounded-md" data-param-id="colesterol_no_hdl" readonly></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div></td>
+                        </tr>
+                        <tr class="details-row">
+                            <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Representa todo el colesterol "malo". Sus causas son las mesmas que para el LDL y Triglicéridos altos.</p><h4 class="mt-4">Recomendaciones</h4><p>El tratamiento es el mesmo que para el Colesterol LDL alto.</p></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Colesterol LDL (mg/dL)</td>
+                            <td data-label="Rango Óptimo" class="px-6 py-4">&lt; 100</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" class="w-full p-2 border rounded-md" data-param-id="ldl" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                            <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Dieta alta en grasas saturadas y trans, sedentarismo, genética.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Consulta a tu médico.</p><ul><li><b>Fibra Soluble (Avena, Psyllium):</b><br><u>Forma de tomar:</u> 1 a 2 cucharadas en agua o alimentos, diariamente.<br><u>Efectos Secundarios:</u> Puede causar gases o hinchazón.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión médica requerida.</p><ul><li><b>Estatinas (ej. Atorvastatina):</b><br><u>Forma de tomar:</u> Pastilla oral, una vez al día.<br><u>Efectos Secundarios:</u> Dolores musculares, problemas hepáticos (raro).</li></ul></div></div></td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Triglicéridos (mg/dL)</td>
+                            <td data-label="Rango Óptimo" class="px-6 py-4">&lt; 150</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" class="w-full p-2 border rounded-md" data-param-id="trigliceridos" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                            <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Dieta alta en azúcares y carbohidratos, alcohol, sobrepeso.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Consulta a tu médico.</p><ul><li><b>Suplementos de Omega-3:</b><br><u>Forma de tomar:</u> Cápsulas de 1 a 4 gramos al día, con las comidas.<br><u>Efectos Secundarios:</u> Sabor a pescado, malestar estomacal.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión médica requerida.</p><ul><li><b>Fibratos (ej. Fenofibrato):</b><br><u>Forma de tomar:</u> Pastilla oral, una vez al día.<br><u>Efectos Secundarios:</u> Malestar estomacal, riesgo de cálculos biliares.</li></ul></div></div></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="mb-8 border-2 border-yellow-500 rounded-lg p-4 bg-yellow-50">
+                <h2 class="text-2xl font-semibold text-yellow-700 border-b-2 border-yellow-500 pb-2 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 0a5 5 0 10-7.07 7.07 5 5 0 007.07-7.07zM12 21a9 9 0 100-18 9 9 0 000 18z" />
+                    </svg>
+                    Atención: Control Hepático (Hígado)
+                </h2>
+                <table class="w-full text-sm text-left text-gray-500 responsive-table">
+                     <thead class="text-xs text-gray-700 uppercase bg-yellow-100">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Parámetro</th>
+                            <th scope="col" class="px-6 py-3">Rango Óptimo</th>
+                            <th scope="col" class="px-6 py-3">Tu Valor</th>
+                            <th scope="col" class="px-6 py-3 text-center">Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">ALT (Alanina Aminotransferasa)</td>
+                            <td data-label="Rango Óptimo" class="px-6 py-4">7 - 55 U/L</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" class="w-full p-2 border rounded-md" data-param-id="alt" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                            <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Daño hepático (hígado graso, alcohol, hepatitis, medicamentos).</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Consulta a tu médico.</p><ul><li><b>Cardo Mariano (Silimarina):</b><br><u>Forma de tomar:</u> Cápsulas estandarizadas (ej. 150-200 mg, 1-3 veces al día).<br><u>Efectos Secundarios:</u> Leve efecto laxante.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión médica requerida.</p><ul><li><b>Suspensión del Agente Causal:</b><br><u>Forma de tomar:</u> Dejar de consumir el alcohol o medicamento causante del daño.<br><u>Efectos Secundarios:</u> Depende del agente.</li></ul></div></div></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section class="mb-8 border-2 border-indigo-400 rounded-lg p-4 bg-indigo-50">
+                <h2 class="text-2xl font-semibold text-indigo-700 border-b-2 border-indigo-400 pb-2 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Atención: Control Prostático (Hombres)
+                </h2>
+                <table class="w-full text-sm text-left text-gray-500 responsive-table">
+                     <thead class="text-xs text-gray-700 uppercase bg-indigo-100">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Parámetro</th>
+                            <th scope="col" class="px-6 py-3">Rango Óptimo</th>
+                            <th scope="col" class="px-6 py-3">Tu Valor</th>
+                            <th scope="col" class="px-6 py-3 text-center">Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">PSA (Antígeno Prostático)</td>
+                            <td data-label="Rango Óptimo" class="px-6 py-4">&lt; 4.0 ng/mL (general)</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="0.1" class="w-full p-2 border rounded-md" data-param-id="psa" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                            <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Hiperplasia prostática benigna, prostatitis o, en algunos casos, cáncer de próstata.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Consulta a tu médico.</p><ul><li><b>Saw Palmetto:</b><br><u>Forma de tomar:</u> Extracto en cápsulas (ej. 160mg dos veces al día).<br><u>Efectos Secundarios:</u> Mareos, náuseas.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión por un urólogo.</p><ul><li><b>Alfabloqueantes (ej. Tamsulosina):</b><br><u>Forma de tomar:</u> Pastilla oral para relajar la próstata.<br><u>Efectos Secundarios:</u> Mareos, eyaculación anormal.</li></ul></div></div></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="mb-8 border-2 border-green-500 rounded-lg p-4 bg-green-50">
+                <h2 class="text-2xl font-semibold text-green-700 border-b-2 border-green-500 pb-2 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    Atención: Páncreas y Vesícula
+                </h2>
+                <table class="w-full text-sm text-left text-gray-500 responsive-table">
+                     <thead class="text-xs text-gray-700 uppercase bg-green-100">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Parámetro</th>
+                            <th scope="col" class="px-6 py-3">Rango Óptimo</th>
+                            <th scope="col" class="px-6 py-3">Tu Valor</th>
+                            <th scope="col" class="px-6 py-3 text-center">Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">Lipasa</td>
+                            <td data-label="Rango Óptimo" class="px-6 py-4">0 - 160 U/L</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" class="w-full p-2 border rounded-md" data-param-id="lipasa" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                            <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Daño pancreático (pancreatitis, obstrucción).</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Una elevación significativa requiere atención médica URGENTE.</p><ul><li><b>Dieta de Reposo Pancreático:</b><br><u>Forma de tomar:</u> Dieta líquida o muy blanda, sin grasas.<br><u>Efectos Secundarios:</u> No apta a largo plazo.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: El tratamiento es hospitalario.</p><ul><li><b>Fluidoterapia Intravenosa:</b><br><u>Forma de tomar:</u> Administración de sueros por vía intravenosa.<br><u>Efectos Secundarios:</u> Supervisado en hospital.</li></ul></div></div></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="mb-8 border-2 border-teal-400 rounded-lg p-4 bg-teal-50">
+                <h2 class="text-2xl font-semibold text-teal-700 border-b-2 border-teal-400 pb-2 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                       <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Atención: Control de Tiroides y Hormonas
+                </h2>
+                <table class="w-full text-sm text-left text-gray-500 responsive-table">
+                     <thead class="text-xs text-gray-700 uppercase bg-teal-100">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Parámetro</th>
+                            <th scope="col" class="px-6 py-3">Rango Óptimo</th>
+                            <th scope="col" class="px-6 py-3">Tu Valor</th>
+                            <th scope="col" class="px-6 py-3 text-center">Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="bg-white border-b">
+                            <td data-label="Parámetro" class="px-6 py-4 font-medium">TSH (Hormona Tiroestimulante)</td>
+                            <td data-label="Rango Óptimo" class="px-6 py-4">0.4 - 4.2 mU/L</td>
+                            <td data-label="Tu Valor" class="px-6 py-4"><input type="number" step="0.1" class="w-full p-2 border rounded-md" data-param-id="tsh" oninput="handleInput(this)" onkeydown="return isNumberKey(event)"></td>
+                            <td data-label="Resultado" class="px-6 py-4"><div class="result-cell indeterminado">--</div><div class="critical-warning mt-1">ATENCIÓN MÉDICA URGENTE</div></td>
+                        </tr>
+                        <tr class="details-row">
+                            <td colspan="4" class="p-0"><div class="details-content"><h4>Posibles Causas</h4><p><b>Alto:</b> Hipotiroidismo. <b>Bajo:</b> Hipertiroidismo.</p><h4 class="mt-4">Tratamientos Naturales</h4><div class="treatment-list"><p class="warning-text">Advertencia: Consulta a tu médico.</p><ul><li><b>Yodo y Selenio (para hipotiroidismo):</b><br><u>Forma de tomar:</u> Consumir algas, pescado y nueces de Brasil. El yodo debe manejarse con cuidado.<br><u>Efectos Secundarios:</u> El exceso de yodo puede ser perjudicial.</li></ul></div><h4 class="mt-4">Tratamientos Químicos (Médicos)</h4><div class="treatment-list"><p class="warning-text">IMPORTANTE: Supervisión por un endocrinólogo.</p><ul><li><b>Levotiroxina (para TSH alta):</b><br><u>Forma de tomar:</u> Pastilla oral diaria, en ayunas.<br><u>Efectos Secundarios:</u> Palpitaciones, ansiedad si la dosis es incorrecta.</li><li><b>Metimazol (para TSH baja):</b><br><u>Forma de tomar:</u> Pastillas orales para reducir la producción hormonal.<br><u>Efectos Secundarios:</u> Erupciones cutáneas, dolor articular.</li></ul></div></div></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <div class="disclaimer">
+                <strong>Importante:</strong> Esta herramienta es solo para fines informativos y educativos. No constituye un diagnóstico médico. Consulta siempre a un profesional de la salud para la interpretación de tus resultados y antes de iniciar cualquier tratamiento.
+            </div>
+        </main>
+    </div>
+
+    <!-- Panel de Controles -->
+    <div class="max-w-5xl mx-auto bg-gray-50 p-4 rounded-b-xl shadow-lg mt-[-8px] flex flex-wrap gap-2 justify-center">
+        <button id="save-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Guardar y Limpiar</button>
+        <button id="export-jpg-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Exportar a JPG</button>
+        <button id="export-png-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Exportar a PNG</button>
+        <button id="backup-btn" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg">Respaldar y Enviar por WhatsApp</button>
+    </div>
+
+    <div class="max-w-5xl mx-auto mt-8">
+        <h3 class="text-xl font-semibold text-gray-700 mb-4">Historial de Exámenes</h3>
+        <div id="history-container" class="space-y-2">
+            <p class="text-gray-500">No hay exámenes guardados.</p>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación de Borrado -->
+    <div id="delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <h3 id="modal-title" class="text-lg font-bold text-gray-800">Confirmar Eliminación</h3>
+            <p id="modal-text" class="text-gray-600 my-4">¿Estás seguro de que deseas eliminar este examen?</p>
+            <div class="flex justify-end gap-4">
+                <button id="cancel-delete-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                <button id="confirm-delete-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- CONFIGURACIÓN DE PARÁMETROS ---
+        const PARAM_CONFIG = {
+            'globulos_rojos': { min: 4.0, max: 5.9, gender: true, criticalLow: 2.0, group: 'erythrocyte' },
+            'hemoglobina': { min: 12.0, max: 17.5, gender: true, criticalLow: 7.0, group: 'erythrocyte' },
+            'hematocrito': { min: 36, max: 50, gender: true, criticalLow: 21.0, group: 'erythrocyte' },
+            'vcm': { min: 80, max: 100 },
+            'hcm': { min: 27, max: 34 },
+            'chcm': { min: 32, max: 36 },
+            'rdw': { min: 11.5, max: 14.5 },
+            'globulos_blancos': { min: 4.5, max: 11.0, criticalHigh: 25.0 },
+            'neutrofilos': { min: 40, max: 75, criticalHigh: 90 },
+            'linfocitos': { min: 20, max: 45, criticalHigh: 60 },
+            'monocitos': { min: 2, max: 10, criticalHigh: 15 },
+            'eosinofilos': { min: 1, max: 6, criticalHigh: 15 },
+            'basofilos': { min: 0, max: 2, criticalHigh: 5 },
+            'colesterol_total': { min: 0, max: 199, group: 'lipid' },
+            'colesterol_hdl': { min: 40, max: 999, gender: true, group: 'lipid' }, // Max alto para que nunca marque "Alto"
+            'colesterol_no_hdl': { min: 0, max: 129 },
+            'ldl': { min: 0, max: 99, criticalHigh: 190 },
+            'trigliceridos': { min: 0, max: 149, criticalHigh: 500 },
+            'alt': { min: 7, max: 55, criticalHigh: 200 },
+            'psa': { min: 0, max: 3.99, criticalHigh: 10.0 },
+            'lipasa': { min: 0, max: 160, criticalHigh: 480 },
+            'tsh': { min: 0.4, max: 4.2, criticalHigh: 10.0 }
+        };
+
+        // --- CONFIGURACIÓN DE INDEXEDDB ---
+        const DB_NAME = 'AnalisisSangreDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'examenes';
+        let db;
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = event => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+                request.onsuccess = event => { db = event.target.result; resolve(db); };
+                request.onerror = event => { console.error('DB error:', event.target.error); reject(event.target.error); };
+            });
+        }
+
+        // --- LÓGICA DE LA APLICACIÓN ---
+        let recordIdToDelete = null;
+        let deleteConfirmationStep = 0;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initDB();
+            loadHistory();
+            document.getElementById('save-btn').addEventListener('click', saveCurrentAnalysis);
+            document.getElementById('export-jpg-btn').addEventListener('click', () => exportImage('jpeg'));
+            document.getElementById('export-png-btn').addEventListener('click', () => exportImage('png'));
+            document.getElementById('backup-btn').addEventListener('click', backupAndShare);
+            
+            const modal = document.getElementById('delete-modal');
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+            const cancelBtn = document.getElementById('cancel-delete-btn');
+            cancelBtn.addEventListener('click', () => { modal.classList.add('hidden'); deleteConfirmationStep = 0; });
+            confirmBtn.addEventListener('click', advanceDeleteConfirmation);
+        });
+
+        function isNumberKey(evt) {
+            const charCode = (evt.which) ? evt.which : evt.keyCode;
+            // Permite números de la fila superior (48-57), del teclado numérico (96-105),
+            // el punto decimal (46 y 110), y teclas de control como backspace (8).
+            if (charCode > 31 && (charCode < 48 || charCode > 57) && (charCode < 96 || charCode > 105) && charCode !== 46 && charCode !== 110) {
+                return false;
+            }
+            return true;
+        }
+
+        function handleInput(element) {
+            const paramId = element.dataset.paramId;
+            const config = PARAM_CONFIG[paramId];
+            if (!config) return;
+
+            checkValue(element, config.min, config.max, config.gender || false, config.criticalHigh || null, config.criticalLow || null);
+
+            if (config.group === 'erythrocyte') {
+                updateErythrocyteIndices();
+            } else if (config.group === 'lipid') {
+                updateLipidIndices();
+            }
+        }
+
+        function updateErythrocyteIndices() {
+            const gr = parseFloat(document.querySelector('[data-param-id="globulos_rojos"]').value);
+            const hb = parseFloat(document.querySelector('[data-param-id="hemoglobina"]').value);
+            const hto = parseFloat(document.querySelector('[data-param-id="hematocrito"]').value);
+            const vcmInput = document.querySelector('[data-param-id="vcm"]');
+            const hcmInput = document.querySelector('[data-param-id="hcm"]');
+            const chcmInput = document.querySelector('[data-param-id="chcm"]');
+
+            if (!isNaN(gr) && !isNaN(hto) && gr > 0) {
+                const vcm = (hto / gr) * 10;
+                vcmInput.value = vcm.toFixed(1);
+                handleInput(vcmInput);
+            }
+            if (!isNaN(gr) && !isNaN(hb) && gr > 0) {
+                const hcm = (hb / gr) * 10;
+                hcmInput.value = hcm.toFixed(1);
+                handleInput(hcmInput);
+            }
+            if (!isNaN(hb) && !isNaN(hto) && hto > 0) {
+                const chcm = (hb / hto) * 100;
+                chcmInput.value = chcm.toFixed(1);
+                handleInput(chcmInput);
+            }
+        }
+
+        function updateLipidIndices() {
+            const totalChol = parseFloat(document.querySelector('[data-param-id="colesterol_total"]').value);
+            const hdl = parseFloat(document.querySelector('[data-param-id="colesterol_hdl"]').value);
+            const noHdlInput = document.querySelector('[data-param-id="colesterol_no_hdl"]');
+            
+            if (!isNaN(totalChol) && !isNaN(hdl)) {
+                const noHdl = totalChol - hdl;
+                noHdlInput.value = noHdl.toFixed(0);
+                handleInput(noHdlInput);
+            }
+        }
+
+        function checkValue(inputElement, min, max, isGenderSpecific = false, criticalHigh = null, criticalLow = null) {
+            const currentRow = inputElement.closest('tr');
+            if (!currentRow) return;
+            
+            const resultCell = currentRow.querySelector('.result-cell');
+            const criticalWarning = currentRow.querySelector('.critical-warning');
+            
+            currentRow.classList.remove('is-abnormal');
+            if (criticalWarning) criticalWarning.style.display = 'none';
+
+            const value = parseFloat(inputElement.value);
+
+            if (inputElement.value.trim() === '' || isNaN(value)) {
+                resultCell.className = 'result-cell indeterminado';
+                resultCell.textContent = '--';
+                inputElement.style.borderColor = '';
+                return;
+            }
+
+            let isAbnormal = false;
+            min = parseFloat(min);
+            max = parseFloat(max);
+
+            if (value < min) {
+                resultCell.className = 'result-cell bajo';
+                resultCell.textContent = 'Bajo';
+                inputElement.style.borderColor = '#f97316';
+                isAbnormal = true;
+                if (criticalLow && value <= parseFloat(criticalLow)) {
+                    if (criticalWarning) criticalWarning.style.display = 'block';
+                }
+            } else if (value > max) {
+                resultCell.className = 'result-cell alto';
+                resultCell.textContent = 'Alto';
+                inputElement.style.borderColor = '#ef4444';
+                isAbnormal = true;
+                if (criticalHigh && value >= parseFloat(criticalHigh)) {
+                    if (criticalWarning) criticalWarning.style.display = 'block';
+                }
+            } else {
+                resultCell.className = 'result-cell normal';
+                resultCell.textContent = 'Normal';
+                inputElement.style.borderColor = '#22c55e';
+                isAbnormal = false;
+            }
+            
+            if (isAbnormal) {
+                currentRow.classList.add('is-abnormal');
+            }
+
+            if (isGenderSpecific && resultCell.classList.contains('normal')) {
+                 resultCell.textContent = 'Normal*';
+            }
+        }
+
+        function saveCurrentAnalysis() {
+            const inputs = document.querySelectorAll('input[data-param-id]');
+            const analysisData = { date: new Date().toISOString(), values: {} };
+            let hasValues = false;
+            inputs.forEach(input => {
+                if (input.value.trim() !== '') {
+                    analysisData.values[input.dataset.paramId] = input.value;
+                    hasValues = true;
+                }
+            });
+
+            if (!hasValues) { console.warn('Intento de guardado sin valores.'); return; }
+
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.add(analysisData);
+            request.onsuccess = () => { clearForm(); loadHistory(); };
+            request.onerror = (event) => console.error('Error al guardar:', event.target.error);
+        }
+
+        function clearForm() {
+            document.querySelectorAll('input[type="number"]').forEach(input => {
+                if (!input.readOnly) input.value = '';
+                const event = new Event('input', { bubbles: true });
+                input.dispatchEvent(event);
+            });
+            document.querySelectorAll('tr.is-abnormal').forEach(row => {
+                row.classList.remove('is-abnormal');
+            });
+        }
+
+        function loadHistory() {
+            const transaction = db.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                const historyContainer = document.getElementById('history-container');
+                historyContainer.innerHTML = '';
+                const results = request.result.reverse();
+
+                if (results.length === 0) {
+                    historyContainer.innerHTML = '<p class="text-gray-500">No hay exámenes guardados.</p>';
+                    return;
+                }
+
+                results.forEach(record => {
+                    const date = new Date(record.date);
+                    const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'flex items-center justify-between p-2 bg-gray-100 rounded-md gap-2';
+                    const loadButton = document.createElement('button');
+                    loadButton.className = 'flex-grow text-left hover:bg-gray-200 rounded-md p-1 text-sm';
+                    loadButton.textContent = `Examen del: ${formattedDate}`;
+                    loadButton.onclick = () => loadAnalysis(record.id);
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'flex-shrink-0 p-1.5 text-red-500 hover:text-red-700 rounded-full hover:bg-red-100 transition-colors';
+                    deleteButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
+                    deleteButton.setAttribute('title', 'Eliminar examen');
+                    deleteButton.onclick = (e) => { e.stopPropagation(); promptDelete(record.id); };
+                    historyItem.appendChild(loadButton);
+                    historyItem.appendChild(deleteButton);
+                    historyContainer.appendChild(historyItem);
+                });
+            };
+        }
+        
+        function promptDelete(id) {
+            recordIdToDelete = id;
+            deleteConfirmationStep = 1;
+            const modal = document.getElementById('delete-modal');
+            document.getElementById('modal-text').textContent = '¿Estás seguro de que deseas eliminar este examen?';
+            document.getElementById('confirm-delete-btn').textContent = 'Sí, eliminar';
+            modal.classList.remove('hidden');
+        }
+
+        function advanceDeleteConfirmation() {
+            const modalText = document.getElementById('modal-text');
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+            deleteConfirmationStep++;
+            if (deleteConfirmationStep === 2) {
+                modalText.textContent = 'Esta acción es permanente. ¿Realmente deseas continuar?';
+            } else if (deleteConfirmationStep === 3) {
+                modalText.textContent = 'Última oportunidad. ¿Confirmas la eliminación definitiva?';
+                confirmBtn.textContent = 'Confirmar Borrado Final';
+            } else if (deleteConfirmationStep > 3) {
+                performDelete(recordIdToDelete);
+            }
+        }
+
+        function performDelete(id) {
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.delete(id);
+            const modal = document.getElementById('delete-modal');
+            request.onsuccess = () => {
+                loadHistory(); 
+                modal.classList.add('hidden');
+                deleteConfirmationStep = 0; recordIdToDelete = null;
+            };
+            request.onerror = (event) => {
+                console.error('Error al eliminar:', event.target.error);
+                modal.classList.add('hidden');
+                deleteConfirmationStep = 0; recordIdToDelete = null;
+            };
+        }
+
+        function loadAnalysis(id) {
+            clearForm();
+            const transaction = db.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.get(id);
+            request.onsuccess = () => {
+                const record = request.result;
+                if (record) {
+                    setTimeout(() => {
+                        for (const [paramId, value] of Object.entries(record.values)) {
+                            const input = document.querySelector(`input[data-param-id="${paramId}"]`);
+                            if (input) {
+                                input.value = value;
+                                const event = new Event('input', { bubbles: true });
+                                input.dispatchEvent(event);
+                            }
+                        }
+                    }, 0);
+                }
+            };
+        }
+
+        function exportImage(format = 'jpeg') {
+            const captureArea = document.getElementById('capture-area');
+            const fileExtension = format === 'jpeg' ? 'jpg' : 'png';
+            html2canvas(captureArea, { scale: 2 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `analisis-sangre-${new Date().toISOString().slice(0,10)}.${fileExtension}`;
+                link.href = canvas.toDataURL(`image/${format}`, 0.9);
+                link.click();
+            });
+        }
+
+        function backupAndShare() {
+            const transaction = db.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.getAll();
+            request.onsuccess = () => {
+                const results = request.result;
+                if (results.length === 0) { console.warn('No hay datos para respaldar.'); return; }
+                let backupText = "Respaldo de Análisis de Sangre:\n\n";
+                results.forEach(record => {
+                    const date = new Date(record.date);
+                    backupText += `--- Examen del ${date.toLocaleString()} ---\n`;
+                    for (const [paramId, value] of Object.entries(record.values)) {
+                        const row = document.querySelector(`input[data-param-id="${paramId}"]`).closest('tr');
+                        if (row) {
+                            const labelElement = row.querySelector('td[data-label="Parámetro"]');
+                            if (labelElement) {
+                                const label = labelElement.textContent;
+                                backupText += `${label}: ${value}\n`;
+                            }
+                        }
+                    }
+                    backupText += "\n";
+                });
+                const encodedText = encodeURIComponent(backupText);
+                window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
+            };
+        }
+        
+        window.addEventListener('resize', () => {
+            document.querySelectorAll('.details-row').forEach(row => {
+                if (row.style.display !== 'none') {
+                    const displayStyle = window.innerWidth <= 767 ? 'block' : 'table-row';
+                    row.style.display = displayStyle;
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
